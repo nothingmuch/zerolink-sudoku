@@ -1,0 +1,79 @@
+@article{Ref1,
+   author = {Khalilov, M. C. Kus and Levi, A.},
+   title = {A Survey on Anonymity and Privacy in Bitcoin-Like Digital Cash Systems},
+   journal = {IEEE Communications Surveys & Tutorials},
+   volume = {20},
+   number = {3},
+   pages = {2543-2585},
+   abstract = {Bitcoin is the most widely known distributed, peer-to-peer payment network without existence of a central authority. In Bitcoin, users do not use real names; instead, pseudonyms are used. Managing and verifying transactions and issuing of bitcoins are performed collectively by peers in the network. Since pseudonyms are used without providing any identity, it is perceived that Bitcoin provides anonymity. However, it is one of the most transparent payment networks since all transactions are publicly announced. Blockchain, which is the public ledger of Bitcoin, includes all transactions to prevent double-spending and to provide integrity. By using data in the blockchain, flow of bitcoins between transactions can be observed and activities of the users can be traced. When the implications obtained from the blockchain are combined with external data, identity and profile of a user can be revealed. This possibility has undesirable effects such as spending history of a user becomes accessible to other people, or cash flow of a merchant becomes exposed to competitors. There are several proposals as extensions or alternatives to Bitcoin, which improve anonymity and privacy. This survey presents an overview and detailed investigation of anonymity and privacy in Bitcoin-like digital cash systems. We examine the studies in the literature/Web in two major categories: 1) analyses of anonymity and privacy in Bitcoin and 2) extensions and alternatives to Bitcoin, which improve anonymity and privacy. We list and describe methods and outcomes for both categories and group studies according to these methods and outcomes. We also present relationships between outcomes of analyses and the improvement methods. We compare performances of the methods and show relationships between the proposals. Moreover, we present guidelines for designing an anonymity/privacy improvement and discuss future research directions.},
+   keywords = {data privacy
+electronic money
+privacy
+peer-to-peer payment network
+transactions
+Bitcoin-like digital cash systems
+pseudonyms
+literature-web
+Bitcoin
+Peer-to-peer computing
+Proposals
+History
+Anonymity and privacy
+blockchain
+cryptocurrency
+digital cash},
+   ISSN = {1553-877X},
+   DOI = {10.1109/COMST.2018.2818623},
+   year = {2018},
+   type = {Journal Article}
+}
+
+@inproceedings{Ref3,
+   author = {Möser, M. and Böhme, R. and Breuker, D.},
+   title = {An inquiry into money laundering tools in the Bitcoin ecosystem},
+   booktitle = {2013 APWG eCrime Researchers Summit},
+   pages = {1-14},
+   abstract = {We provide a first systematic account of opportunities and limitations of anti-money laundering (AML) in Bitcoin, a decentralized cryptographic currency proliferating on the Internet. Our starting point is the observation that Bitcoin attracts criminal activity as many say it is an anonymous transaction system. While this claim does not stand up to scrutiny, several services offering increased transaction anonymization have emerged in the Bitcoin ecosystem - such as Bitcoin Fog, BitLaundry, and the Send Shared functionality of Blockchain.info. Some of these services routinely handle the equivalent of 6-digit dollar amounts. In a series of experiments, we use reverse-engineering methods to understand the mode of operation and try to trace anonymized transactions back to our probe accounts. While Bitcoin Fog and Blockchain.info successfully anonymize our test transactions, we can link the input and output transactions of BitLaundry. Against the backdrop of these findings, it appears unlikely that a Know-Your-Customer principle can be enforced in the Bitcoin system. Hence, we sketch alternative AML strategies accounting for imperfect knowledge of true identities but exploiting public information in the transaction graph, and discuss the implications for Bitcoin as a decentralized currency.},
+   keywords = {cryptographic protocols
+distributed processing
+financial data processing
+Internet
+reverse engineering
+money laundering tools
+Bitcoin ecosystem
+anti-money laundering
+decentralized cryptographic currency
+anonymous transaction system
+Bitcoin Fog
+BitLaundry
+Blockchain.info send shared functionality
+reverse-engineering methods
+Know-Your-Customer principle
+AML strategy
+transaction graph
+Ecosystems
+Public key
+Monitoring
+Information systems
+Educational institutions
+Communities
+Bitcoin
+Money Laundering
+Deanonymization},
+   DOI = {10.1109/eCRS.2013.6805780},
+   type = {Conference Proceedings}
+}
+
+@misc{Ref2,
+   author = {Narayanan, Arvind and Möser, Malte},
+   title = {Obfuscation in Bitcoin: Techniques and Politics},
+   month = {June 01, 2017},
+   abstract = {In the cryptographic currency Bitcoin, all transactions are recorded in the blockchain - a public, global, and immutable ledger. Because transactions are public, Bitcoin and its users employ obfuscation to maintain a degree of financial privacy. Critically, and in contrast to typical uses of obfuscation, in Bitcoin obfuscation is not aimed against the system designer but is instead enabled by design. We map sixteen proposed privacy-preserving techniques for Bitcoin on an obfuscation- vs.-cryptography axis, and find that those that are used in practice tend toward obfuscation. We argue that this has led to a balance between privacy and regulatory acceptance.},
+   keywords = {Computer Science - Computers and Society
+Computer Science -
+Cryptography and Security},
+   url = {https://ui.adsabs.harvard.edu/abs/2017arXiv170605432N},
+   year = {2017},
+   type = {Electronic Article}
+}
+
