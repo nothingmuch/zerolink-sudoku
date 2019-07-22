@@ -1,0 +1,105 @@
+Heurist 1 Methadology - Unmixed Change Merging
+----------------------------------------------
+Defintion:
+  With every Waasabi CoinJoin, we are able to parse the CoinJoin into 4 parties:
+  (1) Input clusters (an input or input(s) that have participated in the Coinjoin
+  (2) Mixed blinded outputs (by denomination and number of co-participants)
+  (3) Change outputs (are, to my knowledge, always linked to specific input clusters)
+  (4) The Coordinator Fee Address (bc1qs604c7jv6amk4cxqlnvuxv26hv3e48cds4m0ew)
+  
+Heursitic #1 is concerned with identifying users that have engaged in a transaction
+with the following parameters:
+  (a) the transaction contains at least one input from the Mixed Blinded Output Set (#2 above)
+  (b) the transaction contains at least one input from the change outputs set (#3 above)
+  
+Note that by this definition, we are not considering more edge cases where the coins from 
+set #2 and set #3 merge, but in later parts of the transaction graph. For now, we consider only
+the simplest case.
+
+Strategies to Establishing a Methadology
+----------------------------------------------
+I begin by taking a medium sized Wasabi transaction that is several weeks old. I am choosing 
+an older transaction because I would like to pick a CoinJoin that has nearly all mixed outputs
+spent. I further want to take a medium size CoinJoin as it will be faster to process by hand.
+
+I have decided to use this block explorer due to the formatting of Wasabi Coinjoins. 
+https://btc.com/bc1qs604c7jv6amk4cxqlnvuxv26hv3e48cds4m0ew
+
+I know have a comprehensive list of all CoinJoins as all CoinJoins pay fees to the coordinator
+address that I ued to query. Note that not all transactions in this query are CoinJoins, but
+by the nature of Wasabi CoinJoins - all CoinJoins will exist somewhere in the query.
+
+I decided to scroll to page 50 to get a CoinJoin from March 11, 2019
+https://btc.com/bc1qs604c7jv6amk4cxqlnvuxv26hv3e48cds4m0ew?page=50
+
+I have found a CoinJoin I am ready to investigate (wtxid):
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547
+
+I can now use another block explroer with preferred feature for transaction-spefic queries:
+https://blockchair.com/bitcoin/transaction/b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547
+
+I noticed that this CoinJoin has: 
+  - 54 participants that received (0.09938927 BTC) in mixed outputs, from index (0 - 53)
+  - 10 Participants that received (0.19876128 BTC) in mixed outputs, from index (54 - 63)
+  - 5 participants that received (0.39752256 BTC) in mixed outputs, from index (64 - 68)
+  - 42 participants that received change from the mix, from index (69 - 110)
+  - (0.00941352	BTC) Was received by the coordinator addres at index (111)
+  
+Of the 69 mixed outputs, only 2 remained unspent at the time of writing.
+
+Now I can begin to select mixed outputs and observe how they are being spent. I will begin at index 0 and work
+my way down the list.
+
+Index/ Comment
+[0] SPENT - Merged 6 mixed 0.1 BTC outputs from 6 unqiue Wasabi CoinJoins (20c82d4eaf2c1ffb5b7609401ac5dc0bd8d3c8890b32387626aad57668603b79)
+            NOTE: All 6 coins come from Wasabi CJ from [March 11 -> March 11]
+[1] SPENT - Merged 20 mixed 0.1 BTC outputs and 7 dust attack outputs (752ff96f634e43a4b838d40bd6e56d7805f664bc4f45bf6a0247f9404bf7e8ad)
+            NOTE: All 20 coins come from Wasabi CJ from [March 11 -> March 12]
+            NOTE: of the 7 dust coins, 5 came from addresses used in previous mixes.
+            NOTE: This is another attack vector to consider, in the form of Address Re-use
+[2] SPENT - Sent to a single Bech32 address, where the funds are UNSPENT
+[3] SPENT - Merged 21 mixed 0.1 BTC outputs 
+            NOTE: All 21 coins come from Wasabi CJ from [January 22 -> March 26]
+[4] SPENT - Merged 17 mixed 0.1 BTC outputs
+            NOTE: All 17 coins come from Wasabi CJ from [March 11 -> March 14]
+[5] SPENT - Merged 23 mixed 0.1 BTC outputs and 4 dust attack outputs (Sent to P2PKH address)
+            NOTE: [March 11 -> March 12]
+
+[6] SPENT - Merged 20 mixed 0.1 BTC outputs and 6 dust attack outputs
+            NOTE: [March 11 -> March 11]
+            NOTE: Sent to P2SH address
+            
+[7] SPENT - Merged 16 mixed 0.1 BTC outputs in a MERGE-SPEND to a P2SH address with change
+            NOTE: [March 11 -> March 11]
+            
+[8] SPENT - Merged 49 mixed 0.1 BTC outputs to a P2SH address
+            NOTE: [March 11 -> April 9th]
+            
+[9] REMIX - cfeeeba7c7eabac775a01970be21623298043f0ad342232082ed3cd2998b7cf6
+            NOTE: Remix was June 29, 2019
+            
+[10] UNSPENT
+
+[11] SPENT - Merged 19 coins (7 dust attack + 12 0.1 BTC), sent to P2SH address
+            NOTE: [March 11 -> March 11]
+
+            
+[12] REMIX - fdebe0856c06575ee79f0cfe4e666ae35c901311f058f7ff64ffd0acf4ce6d46
+            NOTE: [March 12]
+
+
+[XX] SPENT - Merged XX mixed 0.1 BTC outputs ...
+            NOTE: [March 11 -> March 12]
+            NOTE: ...
+[XX] SPENT - Merged XX mixed 0.1 BTC outputs ...
+            NOTE: [March 11 -> March 12]
+            NOTE: ...
+[XX] SPENT - Merged XX mixed 0.1 BTC outputs ...
+            NOTE: [March 11 -> March 12]
+            NOTE: ...            
+[XX] SPENT - Merged XX mixed 0.1 BTC outputs ...
+            NOTE: [March 11 -> March 12]
+            NOTE: ...            
+[XX] SPENT - Merged XX mixed 0.1 BTC outputs ...
+            NOTE: [March 11 -> March 12]
+            NOTE: ...
