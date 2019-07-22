@@ -1,0 +1,339 @@
+Heurist 1 Methadology - Unmixed Change Merging
+----------------------------------------------
+Defintion:
+  With every Wasabi CoinJoin, we are able to parse the CoinJoin into 4 clusters:
+  (1) Input clusters (an input or input(s) that have participated in the Coinjoin
+  (2) Mixed blinded outputs (by denomination and number of co-participants)
+  (3) Change outputs (are, to my knowledge, always linked to specific input clusters)
+  (4) The Coordinator Fee Address (bc1qs604c7jv6amk4cxqlnvuxv26hv3e48cds4m0ew)
+Heursitic #1 is concerned with identifying users that have engaged in a transaction
+with the following parameters:
+  (a) the transaction contains at least one input from the Mixed Blinded Output Set (#2 above)
+  (b) the transaction contains at least one input from the change outputs set (#3 above)
+Note that by this definition, we are not considering more edge cases where the coins from 
+set #2 and set #3 merge, but in later parts of the transaction graph. For now, we consider only
+the simplest case.
+
+Strategies to Establishing a Methadology
+----------------------------------------------
+I begin by taking a medium sized Wasabi transaction that is several weeks old. I am choosing
+an older transaction because I would like to pick a CoinJoin that has nearly all mixed outputs
+spent. I further want to take a medium size CoinJoin as it will be faster to process by hand.
+
+I have decided to use this block explorer due to the formatting of Wasabi Coinjoins.
+https://btc.com/bc1qs604c7jv6amk4cxqlnvuxv26hv3e48cds4m0ew
+
+I know have a comprehensive list of all CoinJoins as all CoinJoins pay fees to the coordinator
+address that I ued to query. Note that not all transactions in this query are CoinJoins, but
+by the nature of Wasabi CoinJoins - all CoinJoins will exist somewhere in the query.
+
+I decided to scroll to page 50 to get a CoinJoin from March 11, 2019
+https://btc.com/bc1qs604c7jv6amk4cxqlnvuxv26hv3e48cds4m0ew?page=50
+
+I have found a CoinJoin I am ready to investigate (wtxid):
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547
+
+I can now use another block explroer with preferred feature for transaction-spefic queries:
+https://blockchair.com/bitcoin/transaction/b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547
+
+I noticed that this CoinJoin has: 
+  - 54 participants that received (0.09938927 BTC) in mixed outputs, from index (0 - 53)
+  - 10 Participants that received (0.19876128 BTC) in mixed outputs, from index (54 - 63)
+  - 5 participants that received (0.39752256 BTC) in mixed outputs, from index (64 - 68)
+  - 42 participants that received change from the mix, from index (69 - 110)
+  - (0.00941352	BTC) Was received by the coordinator addres at index (111)
+
+Of the 69 mixed outputs, only 2 remained unspent at the time of writing.
+
+Now I can begin to select mixed outputs and observe how they are being spent. I will begin at index 0 and work
+my way down the list. After having gone through the first few spent outputs, I realize that there are common
+categories of behaviour. In an attempt to be more systematic with the process, I have decided to relfect
+these common categories with a table.
+
+INDEX: The index of the spent output in the CoinJoin transaction (0 -> 53 for 0.1 BTC mixed outputs)
+
+ADD-RU: Was the Adress that gained the COinJoined Outputs re-used more than minimum 2 times? (Boolean)
+N-RU: The number of times the address appear on the blockchain (1 for each txn)
+STATE: The coin can be UNSPENT, SPENT or REMIX (if the transaction spending the coin is a Wasabi CoinJoin)
+MERGE: Boolean value that represents if other Wasabi Mixed Coins were spent in the same transaction (does not include dust attack spent)
+N-Merge: The number of mixed coins merged, where the result is a tuple represnting different denominations e.g. (2,1,1) = Two 0.1 BTC + one 0.2 BTC plus one 0.4 BTC merged
+Note that if N-Merge = 6, this means that the total number of coins spent in that transaction was 6
+Note if N-merge is a single number (not a tuple) then the default is 0.1 BTC denominations
+The minimum number of N-Merge is 1, but there can still be dust attacks merged.
+First: The date of the oldest merged coin
+Last: The date of the newest merged coin
+Dust: Boolean value that represents if any dust was spent. Dust in this case is > 0.00010000 BTC AND comes from a dust attack transaction
+A Dust attack transaction is one where many hundreds of addresses are given very small amounts of Bitcoin (Dust Amounts)
+N-Dust: The number of dust UTXOs spent in the same transaction
+Change: A Boolean value that represents whether or not change from a W-CoinJoin was spent at the same time as a mixed output.
+N-Change: Number of Chage outputs spent in tandem with the mixed coin
+N-Out: The number of recipient addresses given the coins
+ADDR-T: Address Type of the Received Coins, Relevant values include: P2PKH, P2PK, P2SH, P2WSH, MIXED,
+In the case of MIXED, if coins were sent to multiple addresses (I think it is always maximum 2) then in that case,
+There is one address and another address are of different types. Typically, Wasabi allows for only Bech32 change,
+So this likely means that if (MIXED) is present, then the user spent the coin and has change, and the change is obvious.
+ReUSe: The address that received the coins - has it been used more than 2 times (the minimum number, in 1 in and 1 out)
+This is a Boolean value and can only happen if the same address has received more than 1 times.
+N-ReUse: The number of transactions in total, affecting this address. Only important if Re-Use is TRUE
+
+NOTE: There is a current problem with "Change" in that I am assuming if the coins spent are close to the
+mixed denominations that they are likely mixed, this is NOT necesarily the case but would add a lot of
+extra time so I am just assuming here.
+																				{ Heuristic - 1 }
+INDEX	(STATE)	ADD-RU	N-RU	(Merge)	N-Merge	First	Last	(Dust)	N-Dust	Change	N-Change	N-Out	ADDR-T	ReUse	N-ReUse		REMIX-WTXID:INDEX(INPUT)												DATE	MERGE-MIX	N-MERGE-MIX		Type-Merged		COMMENT
+[0] 	SPENT 	TRUE	3		TRUE	6		Mar 11	Mar 11	FALSE	0		FALSE	0			1		P2SH	TRUE	15		
+[1] 	SPENT 	FALSE	2		TRUE	20		Mar 11	Mar 12	TRUE	7		FALSE	0			1		P2SH	FALSE	2
+[2] 	SPENT 	FALSE	2		FALSE	1		Mar 11	Mar 11	FALSE	0		FALSE	0			1		BECH32	FALSE 	1
+[3] 	SPENT 	FALSE	2		TRUE	21		Jan 22  Mar 26	FALSE   0		FALSE	0			1		P2SH	FALSE 	1
+[4] 	SPENT 	TRUE	3		TRUE	17		Mar 11  Mar 14  FALSE	0		FALSE	0			1		BECH32	FALSE	2	
+[5] 	SPENT 	FALSE	2		TRUE	23		Mar 11  Mar 12	TRUE	4		FALSE	0			1		P2PKH	FALSE	2
+[6] 	SPENT 	FALSE	2		TRUE 	20		Mar 11 	Mar 11	TRUE	6		FALSE	0			1		P2SH	FALSE	2
+[7] 	SPENT 	FALSE	2		TRUE	16		Mar 11  Mar 11	FALSE	0		FALSE	0			2		MIXED	TRUE	42
+[8] 	SPENT	FALSE	2		TRUE	49		Mar 11  Apr 9	FALSE	0		FALSE	0			1		P2SH	FALSE	1
+[9] 	REMIX 	FALSE	2																												cfeeeba7c7eabac775a01970be21623298043f0ad342232082ed3cd2998b7cf6:37		Jun 29	TRUE		2				All-Remix
+[10] 	UNSPENT	FALSE	1
+[11] 	SPENT 	FALSE	2		TRUE	12		Mar 11	Mar 11	TRUE 	7		FALSE	0			1		P2SH	TRUE	3
+[12] 	REMIX 	FALSE	2																												fdebe0856c06575ee79f0cfe4e666ae35c901311f058f7ff64ffd0acf4ce6d46:36		Mar 12	FALSE		1				All-Remix
+[13]	REMIX	FALSE	2																												e4a42d40ea22aa8df8ace42af5f3dc48888c13f314166a2ac1c1e45b036fdf8b:47		Mar 21	FALSE		1				All-Remix
+[14]	SPENT	FALSE	2		TRUE	3		Mar 2	Apr 14	FALSE	0		FALSE	0			1		BECH32	FALSE	1
+[15]	REMIX	FALSE	2																												ca4438cc3f61af76127a7d84c32d09709457f8c9f18879497049fce4ec66d0e6:51		Mar 11	FALSE		1				All-Remix
+[16]	SPENT	FALSE 	2		TRUE	3		Mar 11 	Mar 22	FALSE	0		FALSE	0			2		MIXED	FALSE 	2
+[17]	SPENT	FALSE	2		TRUE	20		Mar 7	Mar 11	FALSE 	0		FALSE 	0			1		P2SH	FALSE 	1
+[18]	SPENT 	FALSE	2		FALSE	1		Mar 11	Mar 11	FALSE	0		FALSE	0			1		P2SH	FALSE	2
+[19]	SPENT 	FALSE 	2		TRUE	2		Mar 11	Mar 11	FALSE	0		FALSE	0			1		P2SH	FALSE	1
+[20]	SPENT	FALSE 	2		TRUE	23		Mar 11  Mar 14	FALSE	0		FALSE	0			2		MIXED	TRUE	8
+[21]	REMIX	FALSE	2																												9acc518a5392ac1f90898e40873fea4fe446c5643b2b0fbeeb4b3044291c94c5:25		Mar 26	FALSE		1				All-Remix
+[22]	SPENT	FALSE	2		TRUE	23		Mar 11	Mar 12	TRUE	2		FALSE	0			1		BECH32	FALSE	2
+[23]	UNSPENT	FALSE	1
+[24]	SPENT	FALSE	2		TRUE	12		Mar 11 	Mar 11	TRUE	8		FALSE	0			1		P2SH	FALSE	2
+[25]	SPENT	FALSE	2		FALSE	1		Mar 11  Mar 11	FALSE	0		FALSE	0			1		P2SH	TRUE 	3
+[26]	SPENT	FALSE	2		TRUE	23		Mar 9   Mar 14	TRUE	7		FALSE	0			1		P2PKH	FALSE	2
+[27]	SPENT	FALSE	2		TRUE	14		Mar 11  Mar 11	TRUE	4		FALSE	0			1		BECH32	FALSE	2
+[28]	SPENT 	TRUE	4		FALSE	1		Mar 11  Mar 11	FALSE	0		FALSE	0			1		BECH32	FALSE	1
+[29]	SPENT	FALSE	2		TRUE	3		Mar 10	Mar 11	FALSE	0		FALSE	0			1		P2PKH	TRUE	24
+[30]	SPENT	FALSE	2		FALSE	1		Mar 11  Mar 11	FALSE	0		FALSE	0			1		P2SH	FALSE	1
+[31]	SPENT	FALSE	2		FALSE	1		Mar 11	Mar 11	FALSE	0		FALSE	0			1		P2SH	FALSE	1
+[32]	SPENT	FALSE	2		TRUE	4		Mar 11	Mar 11	TRUE	4		FALSE	0			1		P2SH	TRUE	91
+[33]	SPENT	FALSE	2		TRUE	3		Mar 11	Mar 11	TRUE	2		FALSE	0			1		P2SH	FALSE	1
+[34]	SPENT	FALSE	2		TRUE	16		Mar 8	Mar 12	FALSE	0		FALSE	0			1		P2PKH	FALSE	2
+[35]	SPENT 	FALSE	2		FALSE	1		Mar 11	Mar 11	FALSE	0		FALSE	0			1		P2SH	FALSE	1
+[36]	SPENT	FALSE	2		TRUE	3		Mar 11	Mar 11	FALSE	0		FALSE	0			2		Mixed	FALSE	2
+[37]	SPENT	FALSE	2		TRUE	10		Mar 11  Mar 11	FALSE	0		FALSE	0			1		P2SH	FALSE	2
+[38]	REMIX	TRUE	4*																												fbece52e8ea851e7998a5cf98efd2f8244cbd08c4787ce2ffe1176f923a04861:60		Mar 11	FALSE		1				All-Remix
+[39]	SPENT	FALSE	2		TRUE	149*	Jan 18	Apr 3	FALSE	0		TRUE	20*			2		Mixed	TRUE	42
+[40]	REMIX	FALSE	2																												1040a221f7a614933b913f595d0bc743c5d1fdd7f5adcba78fb55f2bb861e60e:59		Mar 14	FALSE		1				All-Remix
+[41]	REMIX	FALSE	2																												a5a0e2b925f6e6a16a720343b278b0e2d8b4e9c7957b89c5d60ab10abc82ee1f:21		Mar 13	FALSE		1				All-Remix
+[42]	REMIX	FALSE	2																												497d8faaea16a030a56ec76410e65979b1581d7aea81fce03c3d2f2a9cbb6d78:49		Mar 11	FALSE		1				All-Remix
+[43]	REMIX	FALSE	2																												0b7091fcff6c0cfbd7a59c9ff5287e4afd3aabafe0c091d3d37fa63dc266bcee:37		Apr	6	TRUE		2				All-Remix
+[44]	SPENT	FALSE	2		TRUE	9		Mar 11	Mar 11	FALSE	0		FALSE	0			1		P2PKH	FALSE	2
+[45]	SPENT	FALSE	2		TRUE	3		Mar 11	Mar 11	FALSE	0		FALSE	0			1		P2SH	FALSE	1
+[46]	SPENT	FALSE	2		FALSE	1		MAR 11	Mar 11	FALSE	0		FALSE	0			2		Mixed	FALSE	2
+[47]	SPENT	FALSE	2		TRUE	8		Mar 11  Mar 12	FALSE 	0		FALSE	0			1		P2SH	FALSE	2
+[48]	SPENT	TRUE	3*		TRUE	55		Mar 9	Mar 13	TRUE	3		FALSE	0			1		P2SH	FALSE	2
+[49]	SPENT	FALSE	2		FALSE	1		Mar 11	Mar 11	FALSE 	0		FALSE	0			1		BECH32	FALSE	1
+[50]	SPENT	FALSE	2		FALSE	1		Mar 11	Mar 11	FALSE	0		FALSE	0			1		BECH32	FALSE	2
+[51]	REMIX	FALSE	2																												925b932171ebc174a2e406d5b00a45581bc1ef9e36ab48e6a51d41ac9501b85b:55		Mar 14	FALSE		1				All-Remix
+[52]	REMIX	FALSE	2																												4342063fbd3158f8a3a1d48ac089709cb5d7287c8fb307521d7c17b93e1eab3e:13		Mar 18	FALSE		1				All-Remix
+[53]	SPENT	TRUE	5*		TRUE	11		Mar 11  Mar 12	FALSE	0		FALSE	0			1		P2SH	FALSE	2
+=============================================================================================================================
+[54]	REMIX	FALSE	2																												bb1f915180ff8d7438361488b6942d2c3a35ef99f987040cca2ca7dec9bca1be: 8		Mar 12	FALSE		1				All-Remix
+[55]	REMIX	FALSE	2																												5c77c9c2d9410f7a79f41825789cbd6f65aa0c34e3fb38be2a4f86cb0ee35606:42		Mar 12	FALSE		1				All-Remix
+[56]	REMIX	FALSE	2																												a26368de811b9f9b4982bf58d3dcf926929b1768c9140cf52e6628f75699c92c:40		Mar 13	FALSE		1				All-Remix
+[57]	REMIX	FALSE	2																												bb1f915180ff8d7438361488b6942d2c3a35ef99f987040cca2ca7dec9bca1be:18		Mar 12	FALSE		1				All-Remix
+[58]	REMIX	FALSE	2																												fbece52e8ea851e7998a5cf98efd2f8244cbd08c4787ce2ffe1176f923a04861:32		Mar 11	FALSE		1				All-Remix
+[59]	REMIX	FALSE	2																												f3bd60a30c461744665f1b71b6a6a8d9d8f5556fd019888e3bc1cd6a586a682c:41		Mar 11	FALSE		1				All-Remix
+[60]	REMIX	FALSE	2																												2fd2eb22202e9708033c4cb781148369bb54e49b3c33a8d5e6331941626bffe3:71		Mar 11	FALSE		1				All-Remix
+[61]	REMIX	FALSE	2																												ed75bb17079cfce97b6f44b908c4b72b42247c0f25e7ddb662243b3b8d99152f: 3		Mar 13	FALSE		1				All-Remix
+[62]	REMIX	FALSE	2																												c0afc091ad1a6d48f01d4a52011084d9af31f31a101cdab2e2c3bacc4f0e19ac: 8		Mar 13	FALSE		1				All-Remix
+[63]	REMIX	FALSE	2																												bf16e02de39a364ac97c538c286d2fb4e8dc7277fcf286e7ba7249a76ea487e1:27		Mar 15	FALSE		1				All-Remix
+=============================================================================================================================
+[64]	REMIX	FALSE	2																												62656ba269a5c90b004ab1b953b8f2718d961571ba57495f2e72805bfe5d12b6:31		Mar 12	FALSE		1				All-Remix
+[65]	REMIX	FALSE	2																												03283c1bb815aa04e5efcfe1ce71e6cebcb215e08c221f06ea8db9e4326bce89:44		Mar 13	FALSE		1				All-Remix
+[66]	REMIX	FALSE	2																												497d8faaea16a030a56ec76410e65979b1581d7aea81fce03c3d2f2a9cbb6d78:27		Mar 11	FALSE		1				All-Remix
+[67]	REMIX	FALSE	3*																												81f3b44f617a88afa28b2cdf4a139b00dced8540b3eb9747eb490951f6842869:28		Mar 13	FALSE		1				All-Remix
+[68]	REMIX	FALSE	2																												54cb0c7549ba6f214169e37ae734204d41571f111959ff0fd7d2bea2d44d5d63:21		Mar 11	FALSE		1				All-Remix
+
+COMMENTS:
+[38] (*) The address appearead in 4 Wasabi-CJ (mixed output, dust (never spent), mixed output, remixed input, dust (never spent), remixed input, ) (6 transactions, 4 interactive)
+[39] (*) This address consolidated 149, many change (22+), many mixed (100, 0.1 BTC), some in larger denominations (25 in 0.2 BTC) This is the first concrete example of Heuristic 1
+[48] (*)
+[53] (*)
+[67] (*) This address was dust attacked, but not spent! Does this qualify as a re-use? I actually think not. So I left it FALSE
+
+Tx hash																# 	Value (BTC)	Recipient						Spending block #	Spending txid					Spending tx hash								#		TimeS
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	0	0.09938927	bc1qwkw9xcgvhmk62dem299mp84svn0y7n44x7aqyl	566751	391098815	20c82d4eaf2c1ffb5b7609401ac5dc0bd8d3c8890b32387626aad57668603b79	5	2019-03-12 12:47
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	1	0.09938927	bc1qyg7pnrs944ujggznqpwg5f3f39yzzkhp30x2c9	566816	391255694	752ff96f634e43a4b838d40bd6e56d7805f664bc4f45bf6a0247f9404bf7e8ad	11	2019-03-13 00:44
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	2	0.09938927	bc1qkeps73ucqclqssdrp782ah7kffxz9kh5qzdpd6	568290	393971856	f658b77bd7f59fbf77a906e97c376e8ecace2c4dd1f640e467594fd0785fe058	0	2019-03-22 13:21
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	3	0.09938927	bc1qhauxt5ezvflf9dgxu83m3yelgmmg72swnlrhzm	568878	395116466	4a2ca876f67e6002818b089056a80bb565d89dba2f7444f8c22d6a9bbaa80c9c	10	2019-03-26 11:58
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	4	0.09938927	bc1q7dad5a6l4ff6mcl6836wp0k3fsxeskzq0jqzs5	566962	391570217	44c843ab40ef8742b204d04d2e3eb0b32636f221b57e5a899f624bf59b76f2ed	16	2019-03-14 03:32
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	5	0.09938927	bc1qthcfx3svz9dph9w8xylasdlavshjcuhqh0lvaw	567543	392577208	2a7635160acef0b7f82b1fd7e1da1326cbad7c0511300e712d89d08ee5938e25	19	2019-03-17 19:49
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	6	0.09938927	bc1qdn53q48hmtcfa8klc647wzkprvmvrpfy3qaeuj	566658	390942019	77afd0e40a2ab803226c2f5bc0c53b9db6f475141c200de899764b4ccdbdff1f	6	2019-03-11 22:21
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	7	0.09938927	bc1qcdc5rg9e3rmpw3hf9rlg64j089x2kzdg0xutxv	566849	391312819	893cdce5e042726ae069e1b9f0c84cd04b198bd8b6e31aa405876a7509bc8b08	0	2019-03-13 06:38
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	8	0.09938927	bc1q47qpm38wl7fcxprxzyxwj8r70890s559s9g3rm	572563	404603410	75d82a1cfcd9c04318cc3862d8d05e6c870207aa28deed99548264e85d925be7	8	2019-04-21 04:05
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	9	0.09938927	bc1qe8s2amv2he3g5aaf70zxt59a0nj9zfjvrndefd	583009	429683145	cfeeeba7c7eabac775a01970be21623298043f0ad342232082ed3cd2998b7cf6	37	2019-06-29 12:10
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	10	0.09938927	bc1qkdn97khqw5q53lu7tq9dt2luaywdgvnfmfjkku	Unspent
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	11	0.09938927	bc1qqqyrmxuesvt0mu9885482s3emsfjl9flz5cdyr	566646	390916655	c3ea7ad87a94dced50c47818343dd566e9175caf0c1c30b3e59685498b68af21	6	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	12	0.09938927	bc1q0q5pywm9phcnadakj205slrf7gr0wzjfzy2rph	566669	390962177	fdebe0856c06575ee79f0cfe4e666ae35c901311f058f7ff64ffd0acf4ce6d46	36	2019-03-12 00:15
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	13	0.09938927	bc1qtdc2pgvw95q6ld37njscala8g6q87ry8uaamsj	568180	393788928	e4a42d40ea22aa8df8ace42af5f3dc48888c13f314166a2ac1c1e45b036fdf8b	47	2019-03-21 21:21
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	14	0.09938927	bc1q6vewwhgquu5tgr4y40chxvgzm79dh9y20rjw9a	576510	414457975	c5a3a629b46cf21a8e577e5e973bbacfdabc1e586e82ca82975c0745b5b23ab7	0	2019-05-17 22:04
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	15	0.09938927	bc1q4ktndg45pg608lrp8zs36cmfsjj4r2hdk6uumn	566661	390945027	ca4438cc3f61af76127a7d84c32d09709457f8c9f18879497049fce4ec66d0e6	51	2019-03-11 22:36
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	16	0.09938927	bc1q864cl0y0kfv20j790spxyrnlk0g6yw9jx6tfly	569711	397334008	ce923fabe4d74bcf0954faeb9737688ec129cf8d27a49f6e7fda6db15e431e1e	1	2019-04-01 07:28
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	17	0.09938927	bc1qeewwzudz5ztu0ja6rx6fun99fus5kfftzu830w	566663	390950675	1ed5acba07eb18f6409d030e81af2d6d5a4b51b85befba6d450545e8d82996cc	0	2019-03-11 23:06
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	18	0.09938927	bc1q47w2qv3n0j7ymzteqywpmwdex7mvqj4zmqsqsr	566717	391045552	4ed575a2fbdeee44898a9757338dfa9b03b5d2704a929a83574d620e60e88854	0	2019-03-12 08:22
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	19	0.09938927	bc1qs0wshte7as38yw8a7cax56vddkjv2l3xx5pd4v	566787	391186873	dd26fe352e6ef9a61fda5f35b636d6e2b5bccf68a49296932196d9831ba2195f	0	2019-03-12 19:31
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	20	0.09938927	bc1ql23sn27qw94gykpfulamhzf5ltnx8v4fgew72q	583530	430888344	d3aca42dc914102ed9133fabce95c1fe2344c1494e2e3af501d3760c690c31bc	15	2019-07-02 23:47
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	21	0.09938927	bc1qazqc58f55pml6gahxxckwws6vclxcllafexfjk	568818	394953416	9acc518a5392ac1f90898e40873fea4fe446c5643b2b0fbeeb4b3044291c94c5	25	2019-03-26 02:18
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	22	0.09938927	bc1qlnjrmne6v59gcp4eqrd0y7qcrz58nhs725j7mj	566704	391028221	21b5516daf53b271fdc23968601af099f6fbb6de1593e9dfb6b60ffebdeee73c	13	2019-03-12 06:57
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	23	0.09938927	bc1qmnmnnnph50uw4ktvsul682zzu9v5gsvp4eh9y6	Unspent
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	24	0.09938927	bc1qqwkp523s8v4aw4yr0gvearcvn6xlcrks6vg0cd	566646	390916646	716399f171f2d750b5b75191d362a0f2db0a0cf157b81d5178aedd5f47f8acae	6	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	25	0.09938927	bc1q3ckkyhx9yfa86p957j6mp7em4fuwekmuxwe059	566715	391042887	4ea4827a82e4b958a9bda8b9731b35a5ab71375cdf345df3dcc3d6d941d4024c	0	2019-03-12 08:06
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	26	0.09938927	bc1q6vp5zvp9pekr9qaxj5cgr4ae05jgdvnydkwnf6	567014	391671732	04213c664082e6463e5aa706aaca5940a9a5f61847bf568eebbfdabb1e06c153	17	2019-03-14 12:48
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	27	0.09938927	bc1qsqhlfq5fpvtpa70v65fg4hw3306njj4rh5rdcu	566646	390916654	80cdb6c384663d1844afa4721fc83f7bfe83fc5529a723caca64af3cdfd5e5f3	3	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	28	0.09938927	bc1qnd23yas0pr6kpluh4gec8xqkm5l40l2u27x2lr	567566	392621811	6d7e674d4fe92d8a9c18a7000244277806a23368e3973ddec9b282201ca05cbd	0	2019-03-18 00:39
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	29	0.09938927	bc1q90fqcyxlacallexdap7dfnph0pxwvvmt4fs9ef	572235	403833319	c16a761bde0ab5a02228ff639d5550e36ec4402f1e6e64b508d560362a18d8f3	0	2019-04-18 23:35
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	30	0.09938927	bc1qdrk9eslvkd9c30hvyf8a00y99cavwu6yyevyrl	566648	390920866	a24f63cb2e5a381148d2b1c27a5e38c7684fcb9c6b30b386e402ae31f65c4f47	0	2019-03-11 20:40
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	31	0.09938927	bc1q3fduxhvl5v7grc85s45xgzgewvvtrpqmh5w7ls	566669	390961720	b65182313d498fbe70b0a9b5703a84437c34bed6f1a646c212e8e1ca7a4dea84	0	2019-03-12 00:15
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	32	0.09938927	bc1qzpq0vd70aee6zvkgnj3gzz6rva8j0tyva4xwyl	566646	390916650	0cab9c5db907b49e1f55fa438a61325efbbc93270f680f1739e85041ef8bf7f0	3	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	33	0.09938927	bc1qpp9hs9kue9f9d0czxrxqw287m95ly8xdse9sat	566648	390920888	dbc59df5cbf05deed32e42a8057c63d8db3df2a5719a54ae3bdb5184ff37e427	2	2019-03-11 20:40
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	34	0.09938927	bc1q0ftn0udln3lq7x3tcv795qfxhdfspj8ccpw3hu	566703	391025265	3cff49ea0baf8c522d28d9249ca68433eb111625f0dc56a8aa0d4282adfeafe6	5	2019-03-12 06:56
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	35	0.09938927	bc1qg660klvqsplg7g4rh9szekkj3w5fdzx5kmusrx	566648	390920335	385c9f7f638c73c945fda5456644c9ada5bef135a264e3ef72f3aac7d433415a	0	2019-03-11 20:40
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	36	0.09938927	bc1q5nzvnqnnz9axk6mk6qdsv3yvenmmtnw7ck7gx0	566912	391448507	cb0c6488f56022c22108d20cfc921b75e8f55ac59f8eb31512420e1c923bc012	0	2019-03-13 17:59
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	37	0.09938927	bc1q47kacufk9896wj6wr78fhfhjx0lfygszj9qxct	566716	391043349	c9bf7fe05898767539d6780e2eefea30321cfe79474a436c5c9e65878e7c2f0e	2	2019-03-12 08:11
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	38	0.09938927	bc1q883t2g8pt3q4p63p2we602sq38kkm7wucp6j4g	566654	390935812	fbece52e8ea851e7998a5cf98efd2f8244cbd08c4787ce2ffe1176f923a04861	60	2019-03-11 21:57
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	39	0.09938927	bc1qst24yskz37h7zqm0qysnyddzmutmgelzv5dzk8	575016	410784636	546bced54b795dab9e9776bfcfd162a991d34ad118214fbc17abfcb93ada6306	58	2019-05-07 17:34
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	40	0.09938927	bc1qzy2lm6ddhjfwmywxctetpvyg6udfa0u5nn33ej	566962	391570212	1040a221f7a614933b913f595d0bc743c5d1fdd7f5adcba78fb55f2bb861e60e	59	2019-03-14 03:32
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	41	0.09938927	bc1q3ul9l6rrj4f5769ytkc9lxuthjz6jhz75cvw2l	566874	391367101	a5a0e2b925f6e6a16a720343b278b0e2d8b4e9c7957b89c5d60ab10abc82ee1f	21	2019-03-13 10:57
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	42	0.09938927	bc1qrc78wdr28kcwudfm3rrpn7dgz7t5nvrmcmvwkv	566652	390930334	497d8faaea16a030a56ec76410e65979b1581d7aea81fce03c3d2f2a9cbb6d78	49	2019-03-11 21:23
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	43	0.09938927	bc1qnt24gthulps07664r6ky0csf3u8e3h53c0mu4z	570456	399222213	0b7091fcff6c0cfbd7a59c9ff5287e4afd3aabafe0c091d3d37fa63dc266bcee	37	2019-04-06 10:27
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	44	0.09938927	bc1qtclu2358ukn67vnvmaxke0avqycmy99cyep43s	566658	390940595	fb303f1492a8815e2407d0f6f1590cfbe11cafa03cf620e744ebde20297d2548	2	2019-03-11 22:21
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	45	0.09938927	bc1qyy5jzz8cklg5zwxjut7xjc5a6zgx0t0a42dlz2	566694	391016934	aa3c1223132df428a29df06a6f8e22f536bee556fb73b447a979cc234c81c8ec	2	2019-03-12 05:39
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	46	0.09938927	bc1qmcuyugp3j2gsrwxnuzt9xgj0chnsuc5gwww6e9	570387	399048251	009c9bf1ed3930e5c58a648cef31d2aecb0c439547c8f3459e897ff84c33d4bc	0	2019-04-05 23:07
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	47	0.09938927	bc1q7f9nhlq57h7vkzqj8zj7yem57n6msqv6gjan62	566914	391457472	c193d7a58e55e1f9f3bd857f082c384f69ac5de3e8807b783dbfcf3d0c1e7599	7	2019-03-13 19:00
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	48	0.09938927	bc1q6d24nfz4376g9cy4x8zptl8ag0r6rdmpr3l55v	566826	391276970	1bc3e57eb2137d7d5d7e5a88994b7e07c387b7c71509e073021b77bfc0df845d	43	2019-03-13 02:36
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	49	0.09938927	bc1qgnad34hgvv9acrcy62muh4xwyplfma3kt0e98d	566818	391259176	e665e669b850cc503671d198a222e4685132d8c337505a5e20af47235e3fcc4e	0	2019-03-13 00:56
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	50	0.09938927	bc1qfkegzkj0m4w2qarxmvwvtv5t702vycvywa00fy	567750	392953706	13090c25531dd51ebdc5c582130278f6f505e5ee7df88e26112f9d18bd0cd2e9	0	2019-03-19 03:55
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	51	0.09938927	bc1qely8k82y9k05kfjgjltunytnqglymzk4wlta9w	566962	391570709	925b932171ebc174a2e406d5b00a45581bc1ef9e36ab48e6a51d41ac9501b85b	55	2019-03-14 03:32
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	52	0.09938927	bc1q8ph476u7qqm27tgjeexjed53p97ldjytsxeg62	567635	392751042	4342063fbd3158f8a3a1d48ac089709cb5d7287c8fb307521d7c17b93e1eab3e	13	2019-03-18 12:36
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	53	0.09938927	bc1qq2ae0a9trsmpr6v52lugce5nu87e79z7wdnv3j	566673	390970045	e6b6b4b36170933c6ecca26fa71b481e7782665f1f6f85d86d10a248da8e6f41	2	2019-03-12 01:02
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	54	0.19876128	bc1qzw8a3hnu9800qwrlvps9xqpjwzyqdy6d4cxcf3	566672	390969153	bb1f915180ff8d7438361488b6942d2c3a35ef99f987040cca2ca7dec9bca1be	8	2019-03-12 00:54
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	55	0.19876128	bc1qjaf8rpn3lx6nkyyr6ep0r2peedjnwlcxaz2zeu	566711	391040554	5c77c9c2d9410f7a79f41825789cbd6f65aa0c34e3fb38be2a4f86cb0ee35606	42	2019-03-12 07:56
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	56	0.19876128	bc1qxjxqdmxqcqxayp50wfl3s06jyt9r6a39u9hfat	566874	391367026	a26368de811b9f9b4982bf58d3dcf926929b1768c9140cf52e6628f75699c92c	40	2019-03-13 10:57
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	57	0.19876128	bc1qmtw5njh969527vw43e0xvz2l7qeaa9knqlsyfc	566672	390969153	bb1f915180ff8d7438361488b6942d2c3a35ef99f987040cca2ca7dec9bca1be	18	2019-03-12 00:54
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	58	0.19876128	bc1qq7uf655fa60zv6a4qnadt06xgsv4axur2x72ky	566654	390935812	fbece52e8ea851e7998a5cf98efd2f8244cbd08c4787ce2ffe1176f923a04861	32	2019-03-11 21:57
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	59	0.19876128	bc1q9exnl7e9axcvr5q8permjdwywhm5vh7rz87xy7	566646	390916644	f3bd60a30c461744665f1b71b6a6a8d9d8f5556fd019888e3bc1cd6a586a682c	41	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	60	0.19876128	bc1q97f0h4uw4vfak6lvr3jlha8hwufjdcyara3pyl	566646	390916645	2fd2eb22202e9708033c4cb781148369bb54e49b3c33a8d5e6331941626bffe3	71	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	61	0.19876128	bc1q9gv88lptar4zgqay7dplevefm6yaspwr2lz25y	566840	391298403	ed75bb17079cfce97b6f44b908c4b72b42247c0f25e7ddb662243b3b8d99152f	3	2019-03-13 04:34
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	62	0.19876128	bc1qzue7d73srjmtc2wgn56kcpgt2vvqq97an5w025	566817	391257762	c0afc091ad1a6d48f01d4a52011084d9af31f31a101cdab2e2c3bacc4f0e19ac	8	2019-03-13 00:50
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	63	0.19876128	bc1q4as6e6havv6cphqt9qvfyg5at4r9kzpmxexnal	567217	392044731	bf16e02de39a364ac97c538c286d2fb4e8dc7277fcf286e7ba7249a76ea487e1	27	2019-03-15 17:04
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	64	0.39752256	bc1q4htnkuf280h4ekxjvpjavry07xkq07udlxhs07	566723	391057058	62656ba269a5c90b004ab1b953b8f2718d961571ba57495f2e72805bfe5d12b6	31	2019-03-12 09:16
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	65	0.39752256	bc1qlex5zqz8xfu0txasrny5n540efnut3ee7j4sx0	566816	391255084	03283c1bb815aa04e5efcfe1ce71e6cebcb215e08c221f06ea8db9e4326bce89	44	2019-03-13 00:44
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	66	0.39752256	bc1qe75rl7d3re4q4jdksxgpdwq36fu9x5espvjmj5	566652	390930334	497d8faaea16a030a56ec76410e65979b1581d7aea81fce03c3d2f2a9cbb6d78	27	2019-03-11 21:23
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	67	0.39752256	bc1qx5w7e8j0nxdrgspxrd88q8fuk4wdtgpx4vtayx	566816	391255853	81f3b44f617a88afa28b2cdf4a139b00dced8540b3eb9747eb490951f6842869	28	2019-03-13 00:44
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	68	0.39752256	bc1qc2jkhlc896r4tw89nwhlrl225945hp5hmj6c97	566646	390916653	54cb0c7549ba6f214169e37ae734204d41571f111959ff0fd7d2bea2d44d5d63	21	2019-03-11 20:24
+============================================================================================================================================================================================================================================
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	69	0.09909277	bc1qlr657hkw5wr35dwknt3cqdagmkzsg3hpqa2l2f	566675	390973793	c94787ab9edded37c9e7558b7eb12d55b90d8aad9721c3bf5199ea4e6bd598fe	11	2019-03-12 01:18
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	70	0.09878454	bc1q0g95qan6pzhx6xqgk4gykvw5e08mync4vuxefl	566646	390916652	e3a4335d535a46d9bf718476128b210d7b4af6b4dcac71c470c76e64a30f3860	38	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	71	0.09921681	bc1qfp567s0kqypdcwj9c7gxj7hh4zx4ctv8jpvr2e	566669	390962177	fdebe0856c06575ee79f0cfe4e666ae35c901311f058f7ff64ffd0acf4ce6d46	38	2019-03-12 00:15
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	72	0.09921681	bc1q54la75fhsgk4rq2wzkm9s0qag6ykrampdq7vxc	568346	394099240	8d3f7ab2abf7a6130608637bdb73eca4b34ff898e4405f55651978829b063804	10	2019-03-22 22:16
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	73	0.09921303	bc1qkmnley80ahav3lg2qzd68tjlhgk0ws7kz5jfnw	566661	390945027	ca4438cc3f61af76127a7d84c32d09709457f8c9f18879497049fce4ec66d0e6	33	2019-03-11 22:36
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	74	0.09915429	bc1q6zczd3u8gyzmjpv70qvxthu0cus82yeq7a0fmf	566816	391255856	b414c4eede82705292e23bbb83f8d0024922057881af496c1dbc9b9daddbc17c	23	2019-03-13 00:44
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	75	0.09926713	bc1qax3shj9s7sqqrurkfrvcdftpw90w6yp0npn8qf	567824	393075624	0ce010405a83dc555222bf2e36e1556047a98e6cf7fd5914c77e8da4842cc955	56	2019-03-19 13:54
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	76	0.79330060	bc1qr92us4f9rexrfqtst25984n2cw57u7gcyj4pkj	566654	390935812	fbece52e8ea851e7998a5cf98efd2f8244cbd08c4787ce2ffe1176f923a04861	43	2019-03-11 21:57
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	77	0.02168336	bc1qacukswnkwnex8mqjxlkzvhj6q8e4hf86l7vt64	566675	390973793	c94787ab9edded37c9e7558b7eb12d55b90d8aad9721c3bf5199ea4e6bd598fe	31	2019-03-12 01:18
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	78	0.02844675	bc1q8ax67yrk5fzveq6ufqktnnapsgvw5m8mymm9q0	566691	391010401	179611215beebd1acc98c6c0ffb97ca88b39b785c1af0650cdc377db96aabb59	14	2019-03-12 05:14
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	79	0.09915121	bc1qk5nudj8563n0v37awxahkncg3axvfr0wye4j0f	566646	390916653	54cb0c7549ba6f214169e37ae734204d41571f111959ff0fd7d2bea2d44d5d63	44	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	80	0.04444094	bc1q0dha8xyndmfdtze3gx3dwtj34r5dflawl2659j	566646	390916644	f3bd60a30c461744665f1b71b6a6a8d9d8f5556fd019888e3bc1cd6a586a682c	31	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	81	0.08237808	bc1qm94vjtpwq0hv8rwyhrlmltyle06sp8pak5vaqn	566646	390916645	2fd2eb22202e9708033c4cb781148369bb54e49b3c33a8d5e6331941626bffe3	36	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	82	0.09909893	bc1qw563mkgahsd9yc27e484zsef84lq3hrqxyeq0s	567157	391919984	ca8101e713d3b954721da2e8c0242e682be43b8f5e39b80b37defb9860f65f27	65	2019-03-15 08:37
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	83	0.09921303	bc1q8emlxd08hq7fpt7kgtw0ysa6qwzs8vqxkuragr	567612	392700249	963803d1a924d146da4b081c872015ebfcaad6cf572421a16b26b4fd7bdfbc6e	37	2019-03-18 08:46
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	84	0.09915429	bc1qtquuhuswnplqtaa5vmvfuv8ujx2frvmxp77sxn	566646	390916653	54cb0c7549ba6f214169e37ae734204d41571f111959ff0fd7d2bea2d44d5d63	54	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	85	0.09921303	bc1q0s0fdtkl22g6s4tt2frrqk6eswgjztj34jk6d6	566675	390973793	c94787ab9edded37c9e7558b7eb12d55b90d8aad9721c3bf5199ea4e6bd598fe	44	2019-03-12 01:18
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	86	0.07428495	bc1q6m9cmsjd4ndgskefrfrgm52pa40u2ckzcyg9w8	566874	391367026	a26368de811b9f9b4982bf58d3dcf926929b1768c9140cf52e6628f75699c92c	3	2019-03-13 10:57
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	87	0.09921947	bc1qnsfwk79q9w7uv7h2p0as9426px84xq3ed3tv53	566652	390930334	497d8faaea16a030a56ec76410e65979b1581d7aea81fce03c3d2f2a9cbb6d78	61	2019-03-11 21:23
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	88	0.09885283	bc1qu7r2xpy3g2t5lhuyxkpg7mcu4ehz48we6057tq	566646	390916652	e3a4335d535a46d9bf718476128b210d7b4af6b4dcac71c470c76e64a30f3860	16	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	89	0.09921467	bc1qfawcaj074jnpygzgqxu59euwxc8shdhkkr8t2m	566962	391570216	7ae75a3f8fb465fb10686bc1baff9c97158fc59f8f84d60156bd8bf8217cfa9c	77	2019-03-14 03:32
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	90	0.09747028	bc1q8vmye428yrgfeu39dmrthaw729xjyq57dw2w8d	566652	390930334	497d8faaea16a030a56ec76410e65979b1581d7aea81fce03c3d2f2a9cbb6d78	1	2019-03-11 21:23
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	91	0.09911405	bc1qqw92hhk0jxvdw32pt577r3fx8jghktaseyr7wt	566962	391570707	49e3b4cd9bcf7788811b81eaf4dea36af4eeb05ed907e15487169bf115eaa57b	45	2019-03-14 03:32
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	92	0.09921681	bc1q8npd8lygxaeumcda3va4nx2wdwm94pqa8t3hax	566675	390973793	c94787ab9edded37c9e7558b7eb12d55b90d8aad9721c3bf5199ea4e6bd598fe	23	2019-03-12 01:18
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	93	0.09924763	bc1q4p3ryygp0e84f7u4jzf807h9hdft87p20ssakg	568023	393467130	e2329c596b3ed70f1a8e85a3d66fa19b30f0c76340900d1d025ae4c177e37e83	56	2019-03-20 20:10
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	94	0.09922101	bc1qh64smqcvqtklw32cs6sny9zj4z53qzpwpsnj73	566646	390916644	f3bd60a30c461744665f1b71b6a6a8d9d8f5556fd019888e3bc1cd6a586a682c	33	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	95	0.09921681	bc1qau6nnaztmf0er7sydcd88g7j4w0ang08hwawqp	566711	391040554	5c77c9c2d9410f7a79f41825789cbd6f65aa0c34e3fb38be2a4f86cb0ee35606	34	2019-03-12 07:56
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	96	0.09911405	bc1q74a3vjsg92hupu2llc2eupv099hsl4yattrq93	566962	391570205	704f4b1a068986f70a83e88b64c6f7d35c71a459317f3b6d02817685d435cf5c	14	2019-03-14 03:32
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	97	0.02261492	bc1q46dvctwckktkktxxplcuw79h8dqc87q294jn69	566704	391028220	d537fd296168df30fef9c1da120212e84176c8cae0cf368beadde74e3a2b786a	7	2019-03-12 06:57
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	98	0.09877474	bc1qgf6dlejgqg6negms0pkxwd529m3jffjmh8shlw	566646	390916644	f3bd60a30c461744665f1b71b6a6a8d9d8f5556fd019888e3bc1cd6a586a682c	13	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	99	0.00146503	bc1qup7c49wlfrxly7w2pfywxs8d53nm53peh5c0y0	583207	430111990	8e8e9d3777bcc9c4d29c9896a5a4fbda3b00c05048d54dd07faf0df5c1388e4e	60	2019-06-30 18:04
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	100	0.09922843	bc1qwlklz7gxpr730pt947h94urev2wmrmn6l02hzn	568153	393735862	1cffd04388901417874e02ea53550499ec33f187df8438b8b519292970a239aa	34	2019-03-21 17:35
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	101	0.09917025	bc1q5am72hz92cxfr3fq3adqxg3thyljj87nld9258	567010	391664483	32bbc511e9c8799232da812567b6619b06283c3aa19befb443faded05d78a92b	40	2019-03-14 11:50
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	102	0.09921681	bc1q9wajj9eyvhhc5fx9h67n8xh8egwkd0hjlfgden	568193	393808523	2994eb018729df834ceb4b138007530f21b64a25a96a774a7cd21d246ca59f3d	22	2019-03-21 23:03
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	103	0.09927231	bc1qk2j4ksfhecmht0wmd8p0edjq3jy2fsg7f3z48v	571955	403111639	11de3bf6078c0cde738d65da0f9f11a6dac0ace9393691a2f97ad02cef3bd3cf	11	2019-04-17 00:00
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	104	0.09885829	bc1qsss7yqeyvtyj56chlpulw72eykjugattzmd7pq	569706	397322678	8e8bb4d3f01d8615b515c31b9c3a57d8a20728c0b2c45cb9432dce44af24c11f	23	2019-04-01 06:59
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	105	0.03010207	bc1q7vqk7c28gcd4awt9d5408j35d88pnmev2eq37s	566675	390973793	c94787ab9edded37c9e7558b7eb12d55b90d8aad9721c3bf5199ea4e6bd598fe	38	2019-03-12 01:18
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	106	0.09921467	bc1q2xj4ptrqsxrfwceafv7pymsxq68sp3zpt5vrcp	566675	390973793	c94787ab9edded37c9e7558b7eb12d55b90d8aad9721c3bf5199ea4e6bd598fe	86	2019-03-12 01:18
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	107	0.09921681	bc1qd5cr7llm979an49588sjsee80hga303255a2j7	566816	391255854	b471db9946543b938a2da14f9e85344f34d3cee5792a06bbe62c0540293e59ca	74	2019-03-13 00:44
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	108	0.04517120	bc1qvp235mey0hvexjjwejx49mfffze42n2wv2lc2r	566652	390930334	497d8faaea16a030a56ec76410e65979b1581d7aea81fce03c3d2f2a9cbb6d78	56	2019-03-11 21:23
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	109	0.00438791	bc1q22cn820k3qh8l94tsjud2spm7d96sutvy7ah52	566691	391010402	a9e6357405222cf14b157bbab4b8274072555258dfab11445ef46e5ee967d6a1	2	2019-03-12 05:14	<**>
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	110	0.09886046	bc1q8semfm5r6havrx27pnhfxs42h4kmm9p0x5nnv5	566646	390916652	e3a4335d535a46d9bf718476128b210d7b4af6b4dcac71c470c76e64a30f3860	45	2019-03-11 20:24
+b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547	111	0.00941352	bc1qs604c7jv6amk4cxqlnvuxv26hv3e48cds4m0ew	568363	394120335	8acc09d52f120514ccd681a21252fb9506823823572d04f2bb85510ad908c603	283	2019-03-23 00:22	<WASABI>
+
+(**) The only change output that was not used in a future CoinJoin - this individual combined 6 change outputs from past CoinJoins and 1 incoming payment of 0.020 BTC
+
+
+============================================================================================================================================================================================================================================
+
+Summary of result:
+Transaction Type: Wasabi CoinJoin (Outputs Observation)
+Transaction ID: b8447f6a0dfa4d0e3c05f66a8f8f9b77cfde9d9e1a862d912ec24a8dfd2c2547
+Date and Time: 2019-03-11 20:24 (UTC)
+Total Outputs: 112
+Breakdown of Outputs:	I noticed that this CoinJoin has:
+						  - 54 participants that received (0.09938927 BTC) in mixed outputs, from index (0 - 53)
+						  - 10 Participants that received (0.19876128 BTC) in mixed outputs, from index (54 - 63)
+						  - 5 participants that received (0.39752256 BTC) in mixed outputs, from index (64 - 68)
+						  - 42 participants that received change from the mix, from index (69 - 110)
+						  - (0.00941352	BTC) Was received by the coordinator addres at index (111)
+INDEX - 0 -> 53 (Mixed Outputs of Denomination 0.09938927 BTC)
+Out of the 54 mixed outputs created:
+(a) 2 Outputs remain Unspent today (July 25, 2019)
+	- Both outputs were never re-used or attacked with Dust
+	- No additional Data can be gleaned from these 2 outputs
+(b) 12 Outputs were later re-mixed in a total of 12 distinct CoinJoins (!)
+	- Remixes happened:
+		- Mar 11 (3)
+		- Mar 12 (1)
+		- Mar 13 (1)
+		- Mar 14 (2)
+		- Mar 18 (1)
+		- Mar 21 (1)
+		- Mar 26 (1)
+		- Apr 6  (1)
+		- Jun 29 (1)
+	- Of the 12 remixes, only 2 required merging other coins and both used merged mixed coins (exactly 2 mixed coins of 0.1 BTC denomination)
+	- The remaing 10 re-mixes did not merge any coins
+	- 1 of the twelve re-mixing addresses suffered address re-use [38] and dust attacks, comment available above
+	- The remaining 11 addresses suffered no address re-use (used precisely 2 times)
+	- No additional information (apart from the time of re-mix and the 2 merges) can be found about these participants
+(c) 40 Outputs were spent after the CoinJoin
+	(j) 5 Of these addresses suffered address re-use
+		- [1] & [4] & [48] received mixed coins to the same adress twice, and spent both mixed outputs in 3 distinct transactions contain several doubles
+		- [28] Received mixed coins to the same address twice, spent both coins in sperate transactions (total 4 txns)
+		- [53] Received mixed outputs twice, spent them in a single transaction, received another mixed output and spent again (total 5)
+		- The remaining 35 addresses suffered no re-use
+	(k) 10 of these outputs (out of 40) were not merged with other coins when spent
+		- 9 were sent to a single address
+			- 4 to Bech32
+				- 3 unspent
+				- 1 spent
+			- 5 to P2SH
+				- 3 unspent
+				- 2 spent
+		- 1 [46] Was spent to a P2SH address with no address re-use
+			- 91.7 mBTC spent
+			-  7.6 mBTC received as change in a Bech32 address (later consolidated with other change and remixed)
+	(l) 30 out of the 40 spent outputs involved merges of other coins
+		- Only 1 involved merging coins with tainted coins, [39], a pretty aggregious case of merging 149 outputs 
+		- Of those thirty spent + merged coins, we get:
+			- Average number of merges coins = 19.3, 14.9 (excluding the largest merge)
+			- Median number of merge coins is 13
+			- Most common (mode) to merge is 3, with 6 occurences (out of 30)
+			
+	
