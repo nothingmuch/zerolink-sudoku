@@ -1,4 +1,4 @@
-Heurist 1 Methadology - Unmixed Change Merging
+March Sample Transaction and Methadology
 ----------------------------------------------
 Defintion:
   With every Wasabi CoinJoin, we are able to parse the CoinJoin into 4 clusters:

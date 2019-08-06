@@ -1,0 +1,147 @@
+December Sample Transaction and Methadology
+----------------------------------------------
+Please see March Sample Transaction for previous iterations of data sampling.
+This document iterates over the March sample, with a few minor changes.
+
+Strategies to Establishing a Methadology
+----------------------------------------------
+Yuval and I have decided thyat three transactions would suffice for preliminary investigation.
+We further agreed that if our first sample was March 11, a logical addition would be 
+a December 11 Sample and a June 11 sample.
+
+I have decided to use this block explorer due to the formatting of Wasabi Coinjoins.
+https://btc.com/bc1qs604c7jv6amk4cxqlnvuxv26hv3e48cds4m0ew
+
+I know have a comprehensive list of all CoinJoins as all CoinJoins pay fees to the coordinator
+address that I ued to query. Note that not all transactions in this query are CoinJoins, but
+by the nature of Wasabi CoinJoins - all CoinJoins will exist somewhere in the query.
+
+I decided to use the first CoinJoin that occured on December 11, 2018
+https://btc.com/bc1qs604c7jv6amk4cxqlnvuxv26hv3e48cds4m0ew?page=86
+
+I have found a CoinJoin I am ready to investigate (wtxid):
+7417d0c5eecfc30e1e0812f39d5a3962c3e58d6907a03af8508e21d3d9eb8987
+
+I can now use another block explroer with preferred feature for transaction-spefic queries:
+https://blockchair.com/bitcoin/transaction/7417d0c5eecfc30e1e0812f39d5a3962c3e58d6907a03af8508e21d3d9eb8987
+
+I noticed that this CoinJoin has: 
+  - 41 participants that received (0.09988131 BTC) in mixed outputs, from index (0 - 40)
+  - 0 Participants that received higher denomination outputs
+  - 23 participants that received change from the mix, from index (41-63)
+  - (0.00383280	BTC) Was received by the coordinator addres at index (64)
+
+Of the 41 mixed outputs, only 3 remained unspent at the time of writing.
+
+Now I can begin to select mixed outputs and observe how they are being spent. I will begin at index 0 and work
+my way down the list. After having gone through the first few spent outputs, I realize that there are common
+categories of behaviour. In an attempt to be more systematic with the process, I have decided to relfect
+these common categories with a table.
+
+In my first attempt, I decided to use a .txt file to record results. In this iteration, I would like to
+use a csv file for collecting results, and keep the details of the categories here.
+
+Index	:	The index of the output in the CoinJoin transaction (0 -> 40 for the 0.1 BTC mixed coins)
+Spent?	:	Boolean value, True if the output is currently spent
+	Remixed?:	If it was Spent by a Wasabi CoinJoin, this counts as a remix (Boolean)
+		Rmx Wtxid:	The Transaction ID of the remix CoinJoin
+		Rmx Index:	The index in the inputs of the remix
+		Date	:	The date of the remix
+		MergeMix?:	Boolean - Was the remix done with more than a single coin? 
+		n-merged:	How many coins were consolidated? I believe the maximum is 2, but there could be more.
+		Type merged:Where the merged coins all previously mixed, or was there change added to the mix?
+	Add-RU?	:	Boolean value, if the address receiving mixed coins was reused
+	N-RU	:	Number of times used (1 is minimum, 2 is normal, >=2 is re-used)
+Merged?	: Boolean value that represents if other Wasabi Mixed Coins were spent in the same transaction (does not include dust attack spent)
+	N-Merged: The number of mixed coins merged, where the result is a tuple represnting different denominations e.g. (2,1,1) = Two 0.1 BTC + one 0.2 BTC plus one 0.4 BTC merged
+	Note that if N-Merge = 6, this means that the total number of coins spent in that transaction was 6
+	Note if N-merge is a single number (not a tuple) then the default is 0.1 BTC denominations
+	The minimum number of N-Merge is 1, but there can still be dust attacks merged.
+	Oldest: The date of the oldest merged coin
+	Newest: The date of the newest merged coin
+	Dust?: Boolean value that represents if any dust was spent. Dust in this case is > 0.00010000 BTC AND comes from a dust attack transaction
+	A Dust attack transaction is one where many hundreds of addresses are given very small amounts of Bitcoin (Dust Amounts)
+	N-Dust: The number of dust UTXOs spent in the same transaction
+Change?: A Boolean value that represents whether or not change from a W-CoinJoin was spent at the same time as a mixed output.
+	N-Change: Number of Chage outputs spent in tandem with the mixed coin
+	N-Out: The number of recipient addresses given the coins
+	ADDR-T: Address Type of the Received Coins, Relevant values include: P2PKH, P2PK, P2SH, P2WSH, MIXED,
+	In the case of MIXED, if coins were sent to multiple addresses (I think it is always maximum 2) then in that case,
+	There is one address and another address are of different types. Typically, Wasabi allows for only Bech32 change,
+	So this likely means that if (MIXED) is present, then the user spent the coin and has change, and the change is obvious.
+	ReUSe: The address that received the coins - has it been used more than 2 times (the minimum number, in 1 in and 1 out)
+	This is a Boolean value and can only happen if the same address has received more than 1 times.
+	N-ReUse: The number of transactions in total, affecting this address. Only important if Re-Use is TRUE
+
+# Recipient Value (BTC) Value (USD)
+0 	bc1qd6zghlmjsas8z37wexfdjxvma0kzr9y89t5eun 0.09988131 $354.33
+1 	bc1qq7qw40zakcmeuu48ep6nfjnk4jl76pvca2e5jk 0.09988131 $354.33
+2 	bc1qs93umvvgg49302hu5tqknsm6uyuyt37h29zl9g 0.09988131 $354.33
+3 	bc1qyyh9e6glfz27cne4ylh48c0twupherk8nj5rn0 0.09988131 $354.33
+4 	bc1qyx3dmxjayx6fsds7jv57g9r20sem6wmgf263jw 0.09988131 $354.33
+5 	bc1qjlqj8eputw0f8qlm8jm8qandwq9dw0m9k5cq0h 0.09988131 $354.33
+6 	bc1qggkyalzrk34u43r7nda8tqtchah2e6njmy8f9n 0.09988131 $354.33
+7 	bc1q29k3ngtunv6lye8khprwnzvd5dvjne5fzdl5fp 0.09988131 $354.33
+8 	bc1q5cshqqpln4kpxu04fp0yat803tt207y8z94vun 0.09988131 $354.33
+9 	bc1qlgpferu5v2tqlhem86a70nnvm9y5ez98a4xupp 0.09988131 $354.33
+10 	bc1qr5wzrtfflhehxzxnyqxqypg8f7p5exprrya3np 0.09988131 $354.33
+11 	bc1qq6a8ha2uwhp0jz7afgprdavmj25w2jklmaen7w 0.09988131 $354.33
+12 	bc1qw764nvht6u5y9qurlvqaa0n0cxguq29tt9fm3y 0.09988131 $354.33
+13 	bc1qpqaktm4gtdp7zestdl3k7a3l95t4slq5ck086u 0.09988131 $354.33
+14 	bc1qus7syyq0y4xufnyupwwn878k8st0jqvlq7jxgy 0.09988131 $354.33
+15 	bc1qqu4zznzzr7ykz2ulpnxxd8crlsgz5ea23mgauc 0.09988131 $354.33
+16 	bc1q08mpsp63xy8u8swe6kaev0ru8eprwm0uj95dnm 0.09988131 $354.33
+17 	bc1q4cs53jwpytkn3qhtunnsttkxkavptv0nafqd39 0.09988131 $354.33
+18 	bc1q2wv4vvql6dmutvz4qatzhx0ykj5t948u994uz3 0.09988131 $354.33
+19 	bc1q48uymuptsrk5f640snytc5q2ye44h06uk9duhd 0.09988131 $354.33
+20 	bc1qy4w54qnvxaxssepwduysac9sgjekayuv8qaskh 0.09988131 $354.33
+21 	bc1qp6cjadu5kuhmetv346t4yuljhxhwncjm9nzu47 0.09988131 $354.33
+22 	bc1qr2kp46g0xxnvnz8lanzn7ylqv6kr6ycwuzze7s 0.09988131 $354.33
+23 	bc1qt8xf3ry7eha9fh85vdl48c62c3wp8unx99ln5g 0.09988131 $354.33
+24 	bc1qwr2fpwkt0ks7pmnj9qusy4eq5t07y43367whgc 0.09988131 $354.33
+25 	bc1qk4hqtxaqn98qr0nnlcgqv02n4kz03ytpg479h7 0.09988131 $354.33
+26 	bc1qq5y3ux6nwjweermc0stcp40hv9syhrw39u44j3 0.09988131 $354.33
+27 	bc1qywz4k0x4r9pnp8p940h4k96cunhv65tfnnnc0a 0.09988131 $354.33
+28 	bc1qtcvqhmk9qpefk80w5qkf2zpm788xksvvusrq2w 0.09988131 $354.33
+29 	bc1q9dakmsztdkkn74drs0weteaus5xeprz96zdnn6 0.09988131 $354.33
+30 	bc1qz2ajfcmw0ew5heycnd92vxw6mv37jpcajmtn8v 0.09988131 $354.33
+31 	bc1qw5zu0vj6htaqpwmq36l5e0qfu3w7m9ay6sl886 0.09988131 $354.33
+32 	bc1q07athvsx0jxu5jyd00snygmkkml89fzfesz9dj 0.09988131 $354.33
+33 	bc1qsmnn8q06asj6wyx5f67sh76a6yu6c8guhztxeq 0.09988131 $354.33
+34 	bc1qvr7aemwclj2f34fygqzyx797z0ccemkkmsa98l 0.09988131 $354.33
+35 	bc1qjm7cevgj7zurhq45dpcm4g0fn7qje5v8qklzr8 0.09988131 $354.33
+36 	bc1q5k0kqrsk777mle2mkcafhvu4h5lv7nhgl4y323 0.09988131 $354.33
+37 	bc1qp5njqymdf7697d972rr6lzcyxznaa97ngppgfq 0.09988131 $354.33
+38 	bc1qm2wfma97c8m0sp0mhwz675rddzl2gffkltkyv3 0.09988131 $354.33
+39 	bc1qqwsxz9uy07u9m8gfd0ur0483t5qasnrm4yna9z 0.09988131 $354.33
+40 	bc1qgm56avjm42x345apz40p59hl6pxl7c9zme5uuk 0.09988131 $354.33
+41 	bc1q4ekxtqeeu3gzh9r8dwzs74na0h94zcw9dch3dx 0.60499956 $2146.24
+42 	bc1qmg2m32yzu8qgughz2hth8898pjta2nuappvpfr 0.01251440 $44.40
+43 	bc1qxtdd0fa6u0pedu9ax94dzdhqqfrl42j5e93fq8 4.05902731 $14399.40
+44 	bc1qzt0czn9rmamm84wpvx3r9whn6t7ywvsr56edyu 6.99987790 $24832.10
+45 	bc1q0l0mru0zcah2vxhtz9tcm4mm0asahmj3dn8z3p 0.54999903 $1951.13
+46 	bc1q8y29mfa3urmn7gzmth02n6vnpd7n3chacd60qv 8.83101920 $31328.10
+47 	bc1qxtjlvgt3zc9q606kylcl2d7j5q5awhtja7erh6 0.44175623 $1567.13
+48 	bc1q9cq6y0tflnhyznnlclz66lc2rwh0cpg2jflltt 5.69996294 $20220.70
+49 	bc1qhay6vkz6vcc3tntuh3uy49yav3lz0d492zn3g7 0.96194359 $3412.50
+50 	bc1qff2c9mmqpywz4gsvcgnyhmumww0r5ej7jjj42n 3.35976731 $11918.80
+51 	bc1qqntd759q3rcjxdhk7hkuz3sxaeg9san5qad34h 0.29999907 $1064.25
+52 	bc1qt5yn4xfcm7vpw7yw3dsgdcv2dkpxmmkhpt3lrq 0.09999804 $354.74
+53 	bc1qt43qf2r8y4z3xjxd0py9zfd645x8pmwltry9tq 0.27765366 $984.98
+54 	bc1qscewnjuhjygazvu74clekg5a9385xr8els7q0w 0.19599866 $695.31
+55 	bc1qur8ukgucv4wd2jjghekxwhs03xt0p8c3255l5q 0.07999866 $283.80
+56 	bc1q5j4d3ucdnnq3f60dw8qznehas2cm5u3z2xpcn7 0.06941043 $246.23
+57 	bc1qqnp2sw9qn8h87hlnq7vl07k3umy2s5zey0cjgm 1.60000033 $5676.02
+58 	bc1qxm2petns0r2mhznql8pl03jdcfafv75zf30sxq 1.50054506 $5323.20
+59 	bc1qe5qk4cy2gf9wl5lezug3sgdcarjnan99h58a3e 5.90003120 $20930.40
+60 	bc1qhh2f4p950e89sy0resjl3c5fwuhds04hd95qcu 1.88950923 $6703.05
+61 	bc1q5g2hy33dphd7axjuqqv76kqj32luzyysuwq457 1.75992720 $6243.36
+62 	bc1q0g768p8hrvgjzn40hpjsvfydgezs2ptythjk67 0.09949639 $352.96
+63 	bc1qpqjtjhyfppc2lpd9kp8a2qs90uttycexkskd95 0.69999944 $2483.26
+64 	bc1qs604c7jv6amk4cxqlnvuxv26hv3e48cds4m0ew 0.00383280 $13.60
+
+Summary of result:
+Transaction Type: Wasabi CoinJoin (Outputs Observation)
+
+			
+	
