@@ -1,0 +1,840 @@
+#+TITLE: ZeroLink Sudoku
+#+AUTHOR: Aviv Milner & Yuval Kogman
+#+REVEAL_ROOT: reveal.js-3.8.0/
+#+REVEAL_HLEVEL: 2
+#+OPTIONS: toc:nil, num:nil, ^:{}
+#+REVEAL_TITLE_SLIDE: <h1 class="title" style="color: black; opacity: 0.8">ZeroLink Sudoku</h1><h2 class="author" style="color: black; opacity: 0.8">Aviv Milner &amp; Yuval Kogman</h2><div><img style="margin: 0 2.5em; vertical-align: middle; display: inline; border: none" src="./images/aviv.svg"><img style="margin: 0 2.5em; vertical-align: middle; border: none; display: inline" src="./images/yuval.svg" /></h2>
+#+REVEAL_TITLE_SLIDE_BACKGROUND: ./images/inputs_linear_zoom.png
+#+REVEAL_TRANS: none
+
+#+HTML_HEAD: <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+#+HTML_HEAD: <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.0.0-beta.2"></script>
+#+HTML_HEAD: <script src="https://cdn.jsdelivr.net/npm/vega-embed@5"></script>
+#+HTML_HEAD: <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+#+BEGIN_COMMENT
+;; try with guix emacs?
+
+;; active Org-babel languages
+(org-babel-do-load-languages
+'org-babel-load-languages
+'(;; other Babel languages
+  (plantuml . t)
+  (dot . t)))
+
+(setq org-plantuml-jar-path
+      (expand-file-name "/usr/share/plantuml/plantuml.jar"))
+#+END_COMMENT
+
+* Hello
+  - I'm =nothingmuch=, Yuval, יובל
+  - hate software, tired of bureaucratic cargo cults and weaponized psychology
+  - love-hate free software
+  - still pursuing a dysfunctional relationship with software since Bitcoin
+    messed with my head
+  #+BEGIN_NOTES
+  interested in software that mediates voluntary associations and promotes
+  freedom
+  #+END_NOTES
+* Caveats and Disclosures
+  - Funding provided by zkSNACKs, the company behind Wasabi Wallet
+  - No qualifications, just a confused code monkey, all errors my own
+  - Biased (strongly in favor of privacy technology)
+  - Zero-Link Sudoku: Real vs. Perceived Anonymity
+  #+REVEAL: split:t
+  - Funding provided by zkSNACKs, the company behind Wasabi Wallet
+  - No qualifications, just a confused code monkey, all errors my own
+  - Biased (strongly in favor of privacy technology)
+  - [WIP] Zero-Link +Sudoku+: +Real vs.+ Perceived Anonymity*
+  #+BEGIN_NOTES
+  This project was started by Aviv Milner, who wrote and submitted the abstract.
+  He invited me to help out in case it was accepted, and once it was also
+  arranged that I receive some support from zkSNACKs, the company behind Wasabi
+  Wallet.
+
+  Unfortunately Aviv could not attend or be actively involved for the last few
+  weeks. What follows is my best attempt at picking up where he left off. These
+  are preliminary results, prepared at the last minute as a tradeoff between
+  setbacks, and have received no serious review or criticism.
+
+  I am not comfortable saying anything conclusive about "real world" anonymity,
+  and the "sudoku" bit is still not working.
+  #+END_NOTES
+* Outline
+  1. What is Wasabi Wallet and what is it for
+  2. Stare a bit at Wasabi transaction graph
+  3. Future directions
+
+  #+ATTR_HTML: :style vertical-align: middle; margin-top: -1em; position: absolute; right: -3em;
+  [[./images/repo.svg]]
+
+  https://github.com/nothingmuch/zerolink-sudoku
+* Introduction
+** What is Wasabi Wallet
+   Wasabi is an open source Bitcoin wallet for desktop focused on privacy,
+   including Chaumian CoinJoin functionality, a non-custodial mixing technique.
+
+   The first beta release was on August 1st 2018 followed by stable release on
+   October 31st.
+
+   #+BEGIN_NOTES
+   If that means anything to you, great, if not, I'm hoping to explain it
+   hopefully without getting lost in details. Feel free to interrupt for
+   questions, and please remind me to repeat the questions for the mic.
+   #+END_NOTES
+** Terminology
+   #+BEGIN_NOTES
+   First I want to clarify how I'm going to use some overloaded terminology.
+   #+END_NOTES
+*** Privacy
+    By "privacy" I mean an individual's ability to send and receive payments
+    without revealing information about their financial activity or their wealth
+    ty to their counterparties or the rest of the world.
+
+    #+REVEAL: split
+    This is a narrow sense of the word, even in the context of Bitcoin. For a
+    broader and deeper treatment:
+
+    #+ATTR_HTML: :style vertical-align: middle; position: absolute; right: -1em;
+    [[./images/belcher_tweet.svg]]
+    #+BEGIN_EXPORT html
+    <center>
+    <blockquote class="twitter-tweet" data-theme="dark" data-dnt="true" data-lang="en"><p lang="en" dir="ltr">For the last few weeks I&#39;ve been working on a literature review for bitcoin privacy:  <a href="https://t.co/hmDf0JT8Ky">https://t.co/hmDf0JT8Ky</a>  It aims to cover about all privacy issues in bitcoin, including Lightning network, and has a bunch of examples to help demonstrate how the concepts work in practice.</p>&mdash; belcher (@chris_belcher_) <a href="https://twitter.com/chris_belcher_/status/1099403015444987904?ref_src=twsrc%5Etfw">February 23, 2019</a></blockquote>
+    </center>
+    #+END_EXPORT
+
+*** Whitepaper says
+    [[./images/whitepaper_privacy.png]]
+    #+BEGIN_NOTES
+    Mostly for historical context, this is what the whitepaper had to say, which
+    unfortunately understates the privacy concerns in my opinion.
+    #+END_NOTES
+*** Fungibility
+    By "fungible" I mean that units of a currency are interchangeable with or
+    indistinguishable from one another.
+
+    Fungibility is an important property of money since without it a specific
+    set of funds may not be worth its face value, introducing risk and friction
+    when receiving payments.
+
+    #+REVEAL: split
+    Censorship resistance at the protocol level only applies to miners
+    confirming transactions, not to them being accepted as payment.
+
+    #+ATTR_HTML: :style vertical-align: middle; margin-top: -1em; position: absolute; right: -4em;
+    [[./images/steganographic_principle.svg]]
+
+    https://joinmarket.me/blog/blog/the-steganographic-principle/
+
+    #+BEGIN_NOTES
+    In principle any Bitcoin privacy technology should improve fungibility. With
+    sufficient adoption this may even hold true in the real world, but
+    depending on its nature degredation of fungibility is also possible.
+
+    Here I'd like to refer you to a thoughtful post by Adam Gibson, another
+    JoinMarket developer, which explores the tradeoffs between scalability,
+    privacy, and security.
+    #+END_NOTES
+** Simplified Transaction Graph Model
+   #+REVEAL: split
+   Bitcoin transactions consume prior outputs to create new ones. Outputs can be
+   thought of as a pair:
+
+   $(\textit{Amount}, \textit{Spending Condition})$
+
+   #+REVEAL: split
+   Suppose Alice mines a block:
+
+   [[./images/tx_graph_1_coinbase.svg]]
+   #+BEGIN_COMMENT dot :file ./images/tx_graph_1_coinbase.svg
+   digraph finite_state_machine {
+     rankdir=LR;
+     bgcolor="transparent";
+     node [shape = box ] tx0 [ label="Coinbase Transaction" color="#aaaaaa" fontcolor="#aaaaaa" style=filled fillcolor="#202020" ];
+     node [shape = none] o0 [ label="(50, Alice)" fontcolor="#aaaaaa" ];
+     tx0 -> o0 [ color="#aaaaaa" ];
+   }
+   #+END_COMMENT
+
+   #+REVEAL: split
+   ...and then donates to WikiLeaks:
+
+   [[./images/tx_graph_2_donation.svg]]
+   #+BEGIN_COMMENT dot :file ./images/tx_graph_2_donation.svg
+   digraph finite_state_machine {
+     rankdir=LR;
+     bgcolor="transparent";
+     node [shape = box, ] tx0 [ label="Coinbase Transaction" color="#aaaaaa" fontcolor="#aaaaaa" style=filled fillcolor="#202020" ];
+     node [shape = box, ] tx1 [ label="Donation" color="#aaaaaa" fontcolor="#aaaaaa" style=filled fillcolor="#202020" ];
+     node [shape = none] o0 [ label="(̶5̶0̶,̶ ̶A̶l̶i̶c̶e̶)̶" fontcolor="#304040" ];
+     node [shape = none] o1 [ label="(40, Alice)" fontcolor="#aaaaaa" ];
+     node [shape = none] o2 [ label="(10, WikiLeaks)" fontcolor="#aaaaaa" ];
+     tx0 -> o0 -> tx1 -> { o1, o2 } [ color="#aaaaaa" ];
+   }
+   #+END_COMMENT
+
+   #+REVEAL: split
+   ...and then buys alpaca socks on the dark web:
+
+   [[./images/tx_graph_3_purchase.svg]]
+   #+BEGIN_COMMENT dot :file ./images/tx_graph_3_purchase.svg
+   digraph finite_state_machine {
+     rankdir=LR;
+     bgcolor="transparent";
+     node [shape = box, ] tx0 [ label="Coinbase Transaction" color="#aaaaaa" fontcolor="#aaaaaa" style=filled fillcolor="#202020" ];
+     node [shape = box, ] tx1 [ label="Donation" color="#aaaaaa" fontcolor="#aaaaaa" style=filled fillcolor="#202020" ];
+     node [shape = box, ] tx2 [ label="Purchase" color="#aaaaaa" fontcolor="#aaaaaa" style=filled fillcolor="#202020" ];
+     node [shape = none] o0 [ label="(̶5̶0̶,̶ ̶A̶l̶i̶c̶e̶)̶" fontcolor="#304040" ];
+     node [shape = none] o1 [ label="(̶4̶0̶,̶ ̶A̶l̶i̶c̶e̶)̶" fontcolor="#304040" ];
+     node [shape = none] o2 [ label="(10, WikiLeaks)" fontcolor="#aaaaaa" ];
+     node [shape = none] o3 [ label="(35, Alice)" fontcolor="#aaaaaa" ];
+     node [shape = none] o4 [ label="(5, Alpaca Vendor)" fontcolor="#aaaaaa" ];
+     tx0 -> o0 -> tx1 -> { o1, o2 } [ color="#aaaaaa" ];
+     o1 -> tx2 -> { o3, o4 } [ color="#aaaaaa" ];
+   }
+   #+END_COMMENT
+
+   #+BEGIN_NOTES
+   For this presentation we can mostly think of the blockchain as containing a
+   bipartite graph with unlabeled directed edges connecting transactions and
+   outputs.
+
+   (technical pedantry:
+   - the actual transaction graph is more like a transpose of what I've drawn
+     since later transactions point at prior inputs, not the other way around
+   - or actually it's more like a multigraph between transactions where
+     inputs are labeled edges and outputs are contained in the transaction)
+   #+END_NOTES
+** Privacy & Fungibility Challenges
+   Recall that to be valid a Bitcoin transaction must:
+
+   - Only consume previously unspent coins as inputs
+   - Create coins as outputs with value constrained by inputs
+   - Prove spending authority according to the conditions specified at output creation
+
+   #+REVEAL: split
+   This means the following is public information available to any validating node:
+
+   - All unspent coins at any point in time
+   - All transactions and how they are connected
+   - Related cryptographic public keys and signatures (generally after spending)
+
+   #+REVEAL: split
+   In other words Bitcoin is:
+
+   - Trivially non fungible: every coin is uniquely identifiable within the transaction graph
+   - Not very private: transactions leak information, especially to counterparties.
+** Early Research
+   The consequences of this design (and other aspects of privacy) have been
+   studied in a number of works:
+
+   #+REVEAL: split
+   - [[https://sci-hub.tw/https://link.springer.com/chapter/10.1007/978-1-4614-4139-7_10][An Analysis of Anonymity in the Bitcoin System]] Reid, F., & Harrigan, M. (2011)
+   - [[https://eprint.iacr.org/2012/584][Quantitative Analysis of the Full Bitcoin Transaction Graph]] Ron, D., & Shamir, A. (2012)
+   - [[http://sci-hub.tw/https://link.springer.com/chapter/10.1007/978-3-642-39884-1_4][Evaluating User Privacy in Bitcoin]] Androulaki, E., Karame, G. O., Roeschlin, M., Scherer, T., & Capkun, S. (2013)
+   - [[https://cseweb.ucsd.edu/~smeiklejohn/files/imc13.pdf][A Fistful of Bitcoins]] Meiklejohn, S., Pomarole, M., Jordan, G., Levchenko, K., McCoy, D., Voelker, G. M., Savage, S. (2013)
+
+   [[./images/reid.svg]]
+   [[./images/ron.svg]]
+   [[./images/androulaki.svg]]
+   [[./images/meiklejohn.svg]]
+   #+REVEAL: split
+   These papers all share mostly overlapping definitions of two commonly used
+   heuristics for clustering the graph, both of which trace back to the whitepaper
+
+*** Common Ownership Heuristic
+    [[./images/whitepaper_common_ownership_heuristic.png]]
+*** Change Identification Heuristic
+    [[./images/whitepaper_change_identification_heuristic.png]]
+
+    #+BEGIN_NOTES
+    Based on ordering, amounts, address types, whether or not an address has
+    been used before, or other transaction data.
+    For a more comprehensive review of various heuristics, again I'd like to
+    refer you to the Privacy entry on the Bitcoin wiki.
+    #+END_NOTES
+** What is CoinJoin?
+   A mixing technique to defeat one or both heuristics.
+
+   - Users can collaborate to create joint transactions without giving up control over coins.
+
+   - Equal amount outputs of a single transaction are in a sense fungible (assuming no
+     address reuse, and ignoring considerations of any subsequent transactions)
+
+   #+BEGIN_NOTES
+   Common ownership heuristic is defeated by definition.
+
+   Change identification can be defeated to some extent when making a payment through coinjoin,
+
+   Transaction size limits limit degree of mixing in a single transaction, but
+   with remixing the ambiguity can extend to an entire subgraph of transactions.
+   #+END_NOTES
+
+   #+REVEAL: split
+   [[./images/tx.flow.png]]
+
+   #+ATTR_HTML: :style vertical-align: middle; position: absolute; margin: -1em; right: 0;
+   [[./images/coinjoin_thread.svg]]
+
+   [[https://bitcointalk.org/index.php?topic=279249.0][bitcointalk.org thread]]
+
+   #+REVEAL: split:
+   #+ATTR_HTML: :style vertical-align: middle; position: absolute; right: -1em;
+   #+BEGIN_div
+   [[./images/nopara_tweet.svg]]
+
+   [[./images/nopara_post.svg]]
+
+   [[./images/nopara_pastebin.svg]]
+   #+END_div
+
+   #+BEGIN_EXPORT html
+   <center>
+   <blockquote class="twitter-tweet" data-conversation="none" data-cards="hidden" data-theme="dark" data-dnt="true" data-lang="en"><p lang="en" dir="ltr">As far as I succeeded to track it back &quot;hashcoin&quot; was the first person I found who suggested coinjoin in July 02, 2011, Bitcointalk: <a href="https://t.co/p3E8KW8ZgO">https://t.co/p3E8KW8ZgO</a><a href="https://t.co/YPzIYUsLtb">https://t.co/YPzIYUsLtb</a></p>&mdash; nopara73 (@nopara73) <a href="https://twitter.com/nopara73/status/1159450665715978240?ref_src=twsrc%5Etfw">August 8, 2019</a></blockquote>
+   <blockquote class="twitter-tweet" data-theme="dark" data-dnt="true" data-lang="en"><p lang="en" dir="ltr">&quot;After it has been passed around once, it gets passed around again.  This time, assuming my input and output is still there, I sign the tx and pass it on.  If everyone signs it, it is broadcast and we&#39;re done.&quot;</p>&mdash; nopara73 (@nopara73) <a href="https://twitter.com/nopara73/status/1159451190373093377?ref_src=twsrc%5Etfw">August 8, 2019</a></blockquote>
+   </center>
+   #+END_EXPORT
+** Some CoinJoin implementations
+   - JoinMarket - peer to peer market based model
+   - Wasabi - Chaumian CoinJoin
+   - Samourai - Chaumian CoinJoin
+
+   #+ATTR_HTML: :style vertical-align: middle; position: absolute; margin: -1em; right: -3em;
+   [[./images/coinjoin_research_repo.svg]]
+
+   More: https://github.com/6102bitcoin/CoinJoin-Research
+
+   #+BEGIN_NOTES
+   In JoinMarket, makers offer coins for mixing, and takers construct coinjoins
+   paying makers a fee.
+
+   In both Samourai and Wasabi a central server is used to to coordinate
+   transaction creation.
+   #+END_NOTES
+** Does CoinJoin provide privacy?
+   Yes, with caveats.
+
+   #+BEGIN_NOTES
+   CoinJoin can be used today to gain privacy, but requires dilligence to avoid
+   privacy leaks when considering the transaction graph as a whole, i.e.
+   post-mix linking, interactions with other wallets, and things like temporal
+   patterns or privacy at the network layer.
+
+   Assuming you're not mixing with Sybils, if you CoinJoin after receiving and
+   before/during spending you can gain a reasonable level of privacy as narrowly
+   defined earlier in this talk.
+
+   JoinMarket offers the most flexibility (user controlled denominations and
+   ability to make arbitrary payments in coinjoin transactions).
+   #+END_NOTES
+
+   #+REVEAL: split
+** CoinJoin Research
+   - [[http://www.coinjoinsudoku.com/][CoinJoin Sudoku]] Atlas, K. (2014)
+   - [[https://sci-hub.tw/https://ieeexplore.ieee.org/abstract/document/7966968/][Anonymous Alone? Measuring Bitcoin’s Second-Generation Anonymization Techniques]] Moser, M., & Bohme, R. (2017)
+   - [[https://www.comsys.rwth-aachen.de/fileadmin/papers/2017/2017-maurer-trustcom-coinjoin.pdf][Anonymous CoinJoin Transactions with Arbitrary Values]] Maurer, F. K., Neudecker, T., & Florian, M. (2017)
+
+   [[./images/atlas.svg]]
+   [[./images/moser.svg]]
+   [[./images/maurer.svg]]
+** Does CoinJoin provide fungibility?
+   That remains to be seen.
+
+   #+BEGIN_NOTES
+   If widely use then it may very well create a status quo where many or most
+   coins have an ambiguous history.
+
+   If reliability of the transaction graph as a whole as a basis for censorship
+   is challenged, then fungibility may be a status quo (c.f. mp-ecdsa, payjoin,
+   taproot).
+
+   e.g. MtGoxAndOthers cluster on wallet explorer
+   #+END_NOTES
+** Chaumian CoinJoin in Wasabi
+   ZeroLink is a protocol which allows users to anonymously participate in
+   CoinJoin transactions mediated by a centralized server.
+
+   It utilizes blind signatures in order to hide the link between users' inputs
+   and outputs in the transaction.
+
+   Samourai and Wasabi share a common heritage but have diverged in their
+   implementations.
+*** Blind Signatures
+    Invented by David Chaum, these signatures allow a signer to sign a message
+    without knowing its contents.
+
+    Wasabi currently uses Schnorr blind signatures over secp256k1 but originally
+    used RSA.
+
+    #+ATTR_HTML: :style vertical-align: middle; margin-top: -2em; position: absolute; right: -3em;
+    [[./images/blind_sig_impl.svg]]
+
+    [[https://github.com/MetacoSA/NBitcoin/blob/a615d201aff38b55e954fa3a184a0a439f202b12/NBitcoin/Crypto/SchnorrBlindSignature.cs][NBitcoin/Crypto/SchnorrBlindSignature.cs]]
+
+    #+REVEAL: split
+    Signer with public key $P = dG$, generates a nonce $r$ and sends $R = rG$
+    to requester.
+
+    Requester generates random blinding factors $v$ and $w$, creates and sends a
+    blinded commitment to the message
+    $c' = c - w$
+    where
+    $c = H(m || R + vG + wP)$.
+
+    #+REVEAL: split
+    Signer responds with blinded signature $s' = r - c'd$.
+
+    Requester computes $s = s' + v$ to obtain the complete unblinded signature
+    for $m$, $(c, s)$.
+
+    #+REVEAL: split
+    Verifier computes $H(m || cP + sG) =? c$
+
+    \begin{align}
+       &H(m || cP + sG) \\
+     = &H(m || cdG + (s'+v)G ) \\
+     = &H(m || cdG + ((r-(c-w)d) + v)G ) \\
+     = &H(m || cdG + rG - cdG + wdG + vG ) \\
+     = &H(m || rG + wdG + vG ) \\
+     = &H(m || rG + vG + wdG) \\
+     = &H(m || R + vG + wP) \\
+    \end{align}
+
+    #+BEGIN_NOTES
+    Since I can never remember the details of this stuff, here's a worked
+    version of the verificatoin equation in case anyone asks.
+    #+END_NOTES
+*** Simplified Protocol
+    Alice is a user, one of several participants.
+
+    Bob is also Alice, using a different tor identity.
+
+    #+ATTR_HTML: :style vertical-align: middle; margin-top: -1em; position: absolute; right: -3em;
+    [[./images/coordinator_api.svg]]
+
+    https://wasabiwallet.io/swagger/index.html
+
+    #+REVEAL: split
+    [[./images/chaumian_coinjoin_sequence_diagram.svg]]
+    #+BEGIN_COMMENT plantuml :file images/chaumian_coinjoin_sequence_diagram.svg
+    skinparam monochrome true
+    skinparam shadowing false
+    skinparam sequenceMessageAlign center
+    skinparam sequence {
+      ParticipantFontSize 24
+      ArrowFontSize 20
+      ArrowFontColor #aaaaaa
+      ParticipantFontColor #aaaaaa
+      ParticipantBackgroundColor #202020
+      ParticipantBorderColor #cccccc
+      ArrowColor #cccccc
+      LifeLineBorderColor #cccccc
+      ArrowThickness 10
+      LifeLineThickness 10
+    }
+
+    Alice -> Server: inputs, blinded output
+    Alice <- Server: blind signature
+    ...
+    Bob -> Server: unblinded output & signature
+    ...
+    Alice <- Server: unsigned transaction
+    Alice -> Server: transaction signature
+    ...
+    Server -> Alice: signed transaction
+    #+END_COMMENT
+
+    #+BEGIN_NOTES
+    First Alice proves to the coordinator that she is able to spend some coins
+    she would like to add to a mixing round of some a known denomination,
+    providing a change output script and several blinded output script.
+
+    The coordinator verifies and responds with a signature on the blinded
+    output.
+
+    Later, Alice reconnects on a new tor circuit, and produces the unblinded
+    output and signature, which the coordinator verifies ensuring that "Bob"
+    did indeed participate in input registration, but without being able to
+    link the signature to Alice's input or change.
+
+    The coordinator constructs the CoinJoin transaction by gathering the
+    unblinded output scripts, which Alice can then sign upon verification that
+    her are included and add up to the right amount, and when all Alices have
+    signed, the CoinJoin transaction can be broadcast.
+    #+END_NOTES
+*** Questions so far?
+* Wasabi Usage Analysis
+  #+BEGIN_NOTES
+  Aviv began by carefully looking at few arbitrarily selected transactions
+  and defining some metrics and properties of interest.
+
+  I attempted to implement his approach in software using BlockSci, but after
+  running into trouble with the underlying rocksdb, due to fast approaching
+  deadline and the much narrower requirements ended up rolling my own .
+
+  Current approach still uses Python, but provides a lazy loaded (async) high
+  level representation of only the transaction graph.
+
+  Data is read from an SQLite database, falling back to Esplora and Electrum
+  when missing.
+
+  Used guix for dependencies, including WIP blocksci package for guix in case
+  anyone is interested (rocksdb issues)
+  #+END_NOTES
+** Obtaining Wasabi Subgraph
+   1. Get transactions which pay coordinator
+      - of these, the threshold for a CoinJoin is 5 or more equal amount outputs
+   2. Downloaded all transactions associated with all scripts
+      spent or created in these transactions.
+   #+BEGIN_NOTES
+   - Thanks to blockstream & electrum servers for not banning me
+   #+END_NOTES
+
+   #+REVEAL: split
+   - 5118 CoinJoin transactions creating 583561 and 557306 distinct scripts (as of block 592352)
+   - inputs total 117746 BTC, 46290 of which are from non CoinJoin transactions
+   - average output lifetime is 726 blocks, 942 for base denomination outputs and 531 for others
+** Transactions
+   #+BEGIN_EXPORT html
+   <div id="txns_participants"></div>
+
+   <script>
+   const spec = "plots/txns_participants.vl.json";
+   vegaEmbed("#txns_participants", spec)
+   // result.view provides access to the Vega View API
+   .then(result => console.log(result))
+   .catch(console.warn);
+   </script>
+   #+END_EXPORT
+
+   #+BEGIN_COMMENT
+   - TODO add notable dates/events - https://vega.github.io/vega-lite/examples/wheat_wages.html
+   - TODO zoomable https://vega.github.io/vega/examples/zoomable-scatter-plot/
+   - TODO plot 2: total input amount, total remixed input amount (null if not coinjoin), total mixed output amount (sum of outputs where denom > 1)
+     tx.total_input_amount
+     tx.inputs.coinjoins.total_mixed_output_amounts
+     total(tx.inputs.funding_tx.total_mixed_output_amounts) # vector results? high level, cache of computed properties? purely functional inheritable impl w/ for low boilerplate async versions? @await(...slots...)?
+   #+END_COMMENT
+*** Outputs - Overview
+    [[./plots/output_denominations_log_cropped_overview.png]]
+    #+BEGIN_NOTES
+    In this plot we see coinjoin output amounts plotted over time.
+
+    The size and color of a point corresponds to the number of outputs of that
+    amount in a transaction (change output is typically black, purple and reddish
+    colors are in the low 10s, and yellow to white is approaching 100 (change
+    output is typically black, purple and reddish colors are in the low 10s, and
+    yellow to white is approaching 100).
+    #+END_NOTES
+*** Inputs - Overview
+    [[./plots/inputs_log_cropped_overview.png]]
+    #+BEGIN_NOTES
+    Before we look in a bit more detail, here is the corresponding plot of
+    outputs spent by coinjoins. Here points are individual inputs, but remixed
+    coins are still colored the same as the mixed outputs from the previous plot.
+
+    I find it's helpful to think of having mixed outputs of the base denomination
+    as a sort of ground state that the Wasabi client tries to reach whenever
+    coins are queued for mixing.
+    #+END_NOTES
+*** Inputs not originating from Wasabi CoinJoins
+    [[./plots/non_coinjoin_inputs_log.png]]
+*** Inputs - 1.0.x
+    [[./plots/inputs_log_1.0.png]]
+    #+BEGIN_NOTES
+    Let's zoom in to look at Wasabi's 1.0.x era, before the protocol upgrade that
+    introduce multiple mixed outputs for users with larger amounts.
+
+    Here we can see Wasabi's original coin selection and mixing at work, as
+    large amounts enter the pool.
+
+    Also note consolidations of small change outputs in lower left corner
+    #+END_NOTES
+*** Outputs - 1.0.x
+    [[./plots/output_denominations_log_1.0.png]]
+*** Outputs - 1.0.x
+    [[./plots/output_denominations_lin_1.0.png]]
+    #+BEGIN_NOTES
+    Plotting this in linear scale (with some higher values cropped out) makes the
+    pattern of users with large amounts even more striking.
+    #+END_NOTES
+*** Outputs - 1.1.x
+    [[./plots/output_denominations_log_1.1.png]]
+    #+BEGIN_NOTES
+    Wasabi 1.1.0 changed the Chaumian CoinJoin protocol, introducing outputs
+    which are multiples of the base denomination, and also causing users to
+    deploy more sophisticated coin selection.
+    #+END_NOTES
+*** Evolution of Wasabi Coin Selection
+    - 1.0.0 greedy algorithm, ordered by amount
+    - 1.0.2 minimize # of inputs, if >1 minimize amount
+    - 1.1.0 forced upgrade (protocol change)
+    - 1.1.4 prefer lower anonymity set size inputs
+    - 1.1.6 if coin selection would generate change, add in small change with
+      same or better anon set size
+    #+BEGIN_NOTES
+    Note that coin selection logic only applies to queued coins, for spending
+    and queuing coins must be selected manually.
+
+    Uses LINQ and assuming stable sorting, such that prior sorts break ties of
+    later ones.
+
+    The change introduced in 1.1.6 caused me to obsess endlessly about change
+    attribution.
+    #+END_NOTES
+*** Outputs - 1.1.x detail
+    [[./plots/output_denominations_lin_1.1_detail.png]]
+    #+BEGIN_NOTES
+    If we zoom in around 1 bitcoin sized outputs, again in linear scale, we can
+    see some more patterns which are again a consequence of coin selection and
+    the decaying round denominations.
+    #+END_NOTES
+*** Inputs - 1.1.x detail
+    [[./plots/inputs_lin_1.1_detail.png]]
+    #+BEGIN_NOTES
+    The reason for this is that amounts like 0.5 or 1.0 bitcoin are continually
+    brought in, which creates these upwards sloping black lines of change
+    outputs that mirror the round denomination decreases above them.
+
+    Also note how remixed inputs surround the tighter traces left by the
+    outputs (though this plot doesn't really show the volume of coins that are
+    remixed more quickly).
+    #+END_NOTES
+** Attribution of Change Outputs
+   Coordinator logic is pretty complicated:
+   - denomination adjusts upwards to accomodate user w/ smallest input sum @ 0% mixing fees
+   - users only pay the fees that they can
+   - "keep the change" below threshold
+   - users with change pay exact coordinator fees
+   - global mining fee adjustment right before signing
+   #+REVEAL: split:t
+   - Iterated by alternating mixed integer programming with buggy and unsupported closed source software running on meat coprocessor
+   - Limited success so far
+   - Ashamed to admit I used google spreadsheet, but hey at least it's not a blockchain
+   #+BEGIN_EXPORT html
+   <section data-background-iframe="https://docs.google.com/spreadsheets/d/e/2PACX-1vTkXHkeaGLnbXvgZ4TNgKASgGO3If_NW3SY-oPQFKu42jFiPTH7W_4z2N-U9ydlVInTS83OIgJfk3Tb/pubhtml?widget=true&amp;headers=false" data-background-interactive>
+   </section>
+   #+END_EXPORT
+   #+REVEAL: split
+** Post Mix Hygiene
+   Aviv identified 4 potential issues:
+
+   1. Merging of mixed and unmixed coins
+   2. Consolidation of mixed coins
+   3. Dust attacks
+   4. Temporal patterns
+   #+BEGIN_NOTES
+   Since my clustering efforts were focused on change attribution, I can only
+   present a superficial analysis of the first three issues.
+   #+END_NOTES
+*** Non CoinJoin transactions spending both mixed and non mixed inputs
+    [[./plots/taint_log.png]]
+*** Non coinjoin transactions spending multiple mixed coins
+    [[./plots/consolidation_log.png]]
+*** Dust
+    Wasabi 1.1.3 ignores < 0.0001 BTC outputs
+
+    #+ATTR_HTML: :style vertical-align: middle; position: absolute; right: -1em;
+    [[./images/nopara_dust.svg]]
+
+    #+BEGIN_EXPORT html
+    <center>
+    <blockquote class="twitter-tweet" data-theme="dark" data-dnt="true" data-cards="hidden" data-lang="en"><p lang="en" dir="ltr">Wasabi users are under dust attack and it seems to be somewhat successful. About half of them don&#39;t mind joining together some of their dusts, exposing the links between their mixed outputs (not the mixes though.) I&#39;ll hide the dust in the next release.<a href="https://t.co/Cbdw5QEXBz">https://t.co/Cbdw5QEXBz</a></p>&mdash; nopara73 (@nopara73) <a href="https://twitter.com/nopara73/status/1105779583410946049?ref_src=twsrc%5Etfw">March 13, 2019</a></blockquote>
+    </center>
+    #+END_EXPORT
+
+   #+REVEAL: split
+   Only found 58 spent outputs (and 143 total) s.t.:
+
+   - <= 10000 satoshi in value
+   - not funded by a Wasabi CoinJoin
+   - shares script with some Wasabi CoinJoin output
+
+   This seems like a false negative.
+** Address Reuse
+    #+ATTR_HTML: :style vertical-align: middle; position: absolute; right: -4em;
+    [[./images/2034.svg]]
+
+   - [[https://github.com/zkSNACKs/WalletWasabi/issues/2034][Issue #2034 - Address Reuse occurs in Blinded Outputs]]
+   - Some users known to have used same seed in several wallets concurrently
+
+   #+REVEAL: split
+
+   #+BEGIN_COMMENT
+   - TODO reuse in same tx - multiple outputs, input and output share script
+   - TODO reuse by script broken down by output type, and by spend status
+   - TODO cumulative new and old scripts over time (accum txs, for each output (input), count where script.id not in select script_id from outputs join funding_tx where height <= tx.height) (count outputs at height spending to script)
+   - TODO outputs with reused addresses scatterplot
+     - unspent
+     - spent
+   - TODO population of pre-mixed inputs
+     for each input to each coinjoin, recursively enumerate all txs that spend its change (by amount correlation, FIXME large denoms?)
+     plot distributions of these? (sample?)
+   #+END_COMMENT
+
+   #+BEGIN_NOTES
+   Again because I have not tackled clustering, and also because this is a
+   somewhat contentious issue lately, I'm not ready to say anything definitive
+   about address reuse rates, except that it happens, and it seems to happen
+   quite often.
+
+   Even before a more systematic approach to clustering, I would like to see if
+   address reuse can be correlated with change chains in order to try and
+   understand how variable reuse rates are among users.
+   #+END_NOTES
+** Anonymity Set Size
+   Wasabi defines the anonymity set gained per transaction output in terms of
+   the number of its indistinguishable siblings.
+
+   Outputs inherit smallest size from funding inputs.
+
+   #+BEGIN_NOTES
+   Although Aviv mentioned it in the submitted abstract, apart from some
+   theoretical objections to the anonymity set size metric I have little to
+   say so far about how to amprove Wasabi's reported metrics.
+
+   - base case is right
+   - but recursive definition both double counts and under counts
+   - the dimension arguably not very meaningful, potentially misleading
+   - requires private information to calculate, no clear strategy for how to
+     account for remixing apart from ever widening intervals
+   #+END_NOTES
+
+   #+REVEAL: split
+   This can both under and overestimate the actual privacy gained:
+   #+ATTR_HTML: :style vertical-align: middle; position: absolute; right: -4em;
+   [[./images/goodhart.svg]]
+
+   - A clique of users constantly remixing wastes block space and costs users
+     money with little benefit to them or the network.
+   - Inputs coming from distinct CoinJoin contribute their anon set size to
+     all plausible outputs, which is supra-linear.
+
+   #+BEGIN_NOTES
+   Goodhart's Law
+   #+END_NOTES
+
+   #+REVEAL: split
+   #+ATTR_HTML: :style vertical-align: middle; position: absolute; right: -4em;
+   [[./images/boltzmann.svg]]
+
+   LaurentMT's [[https://github.com/Samourai-Wallet/boltzmann][Boltzmann]] defines useful metrics, but:
+
+   - entropy measure is hard to interpret for Wasabi CoinJoins
+   - underlying linking probability matrix used to derive is more appropriate, but
+     scales exponentially in tx size
+   #+REVEAL: split
+   This is a difficult problem, especially if looking beyond isolated
+   transactions.
+
+   Please share your thoughts with me!
+* Future Directions
+  (and some bonus slides presented in log scale)
+** This Research
+   - Bugs, problems, minimal coding standards
+   - Finish analyses
+   - Read-at-height semantics for reproducible results
+   - Integrate different analyses
+   - Presentable Jupyter notebook, tidy up plots
+** Additional Research
+*** Additional Data Sources
+    - Clustering
+      - Public Lightning Channels
+      - Exchanges
+    - JoinMarket & Whirlpool
+** Possible Wasabi Improvements
+*** Pre-spend diagnostics:
+    - Spending unmixed coins
+    - Linking of different classes of inputs
+    - Recipient script type compared to Wasabi's
+*** Address reuse prevention
+    Banning seen addresses from CoinJoin transactions does nothing for sybil
+    attacks, but can help users avoid accidental reuse.
+*** Coin selection during queing
+    Wasabi outputs inherit labels from prior linked coins until the anonymity
+    set size target is reached, at which point it is cleared.
+
+    This data is semi structured, and could be parsed or made structured in
+    order to avoid entangling coins with unrelated histories when queining.
+** Chaumian CoinJoin improvements
+*** Differential fees
+    Allow output of distinct prior coinjoins to participate free to create
+    incentive for broader transaction graph and slower (constant?) denomination
+    reductions.
+
+    Samourai's Whirlpool does something similar (among other differences), new
+    entrants pay to mix with older participants, tx0
+*** Prepaid Fees
+    - Opt-in registration of small inputs into CoinJoins
+    - PrivacyPass style long lived tokens
+    - Redeem during input registration to cover coordinator and mining fees
+*** Unequal amounts
+    Another difficult problem.
+** Bitcoin Ecosystem
+*** Intermixing
+    Different privacy wallets are mostly complementary, but unfortunately it
+    seems that a zero sum approach is predominant in social media with regards
+    Bitcoin privacy wallet wallet userbases.
+
+    I hope this is only a selection effect, and instead of a binary approach,
+    encourage playing off of tools' relative strengths.
+
+    #+REVEAL: split
+    For example, JoinMarket has functionality well suited preparing smaller
+    amounts and change for (re-)mixing with Wasabi.
+
+    Again, assuming some adoption threshold, as these graphs intertwine the
+    benefits to both fungibility and privacy are compounding.
+*** Lightning
+    #+REVEAL: split
+    Prepaid fees over LN
+     - Fits well with LN privacy model
+     - Does not necessitate complex integration
+
+    #+REVEAL: split
+    Deeper integration?
+    - [[https://joinmarket.me/blog/blog/coinjoinxt/][Adam Gibson's CoinJoinXT]]
+    - [[https://zmnscpxj.github.io/bitcoin/coinjoinxt.html][ZmnSCPxj's Chaumian followup]]
+
+    [[./images/coinjoinxt.svg]]
+    [[./images/chaumian_coinjoinxt.svg]]
+
+    #+BEGIN_NOTES
+    Integrating CoinJoin and channel funding/splicing requires *very* careful
+    consideration.
+
+    For example receiving change outputs from a coinjoin atomically over
+    lightning is a drastic departure from Wasabi's current privacy model.
+
+    Funding channels from coinjoins may be desirable in specific circumstances
+    (hiding origin of funding txns), but undesirable in others (linkage of
+    coinjoin related outputs to long lived identity).
+
+    What about other possible integrations?
+
+    Several of the talks in tomorrow's schedule sounds promising for thinking
+    about this intersection more clearly.
+    #+END_NOTES
+*** Soft Forks
+    Segregated Witness was the great compositionality enabler, enabled
+    safe off-chain transaction graphs using multisignatures and time locks.
+
+    Schnorr signatures and Taproot extend this approach with better privacy and
+    fungibility, by reducing the on chain footprint.
+    #+BEGIN_NOTES
+    OP_STB talk earlier today.
+    #+END_NOTES
+
+*** There-is-no-fork Meta Consensus Protocol Upgrades:
+    Newly practical MP-ECDSA brings some benefits of Schnorr signatures to
+    current consensus rules.
+
+    Particularly attractive for fungibility, given indistinguishability from
+    standard =P2{,W}PKH= outputs.
+* Summary
+  I have a lot of work left to do.
+* Thank You
+  #+ATTR_HTML: :style vertical-align: middle; margin-top: -1em; position: absolute; right: -3em;
+  [[./images/repo.svg]]
+
+  https://github.com/nothingmuch/zerolink-sudoku
