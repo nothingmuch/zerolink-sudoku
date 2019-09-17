@@ -38,6 +38,7 @@ class Output(base.IdempotentAttrs):
     input_id: int
     spending_tx_id: int
     vin: int
+    height: int
 
     # FIXME async
     # @property

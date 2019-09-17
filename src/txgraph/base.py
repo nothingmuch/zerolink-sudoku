@@ -127,6 +127,7 @@ class MonotonicAttrs(IdempotentAttrs): # TODO rename to StateMachineAttr? script
     """
     __slots__ = ()
 
+    # FIXME this is a shitty API, need set_initial_value and update_value based API
     def __setattr__(self, field, value):
         if value is None:
             raise('no') # TODO 
